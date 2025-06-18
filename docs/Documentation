@@ -1,0 +1,355 @@
+# F1 Dash - Formula 1 Telemetry Dashboard
+## User Guide
+
+## What is F1 Dash?
+F1 Dash is a web application that lets you explore Formula 1 racing data in an easy-to-understand way. Think of it as a high-tech dashboard that shows you exactly how F1 drivers perform on the track, including their speed, braking, and acceleration patterns.
+
+## What Can You Do With F1 Dash?
+
+### 1. View Driver Performance
+- See how fast drivers are going at any point in the race
+- Watch how they use the throttle and brakes
+- Check which gear they're using
+- Compare different drivers' performances
+
+### 2. Track Analysis
+- View the race track with color-coded sections
+- See which parts of the track are faster or slower
+- Understand how different drivers take corners
+
+### 3. Team Comparisons
+- Compare drivers from the same team
+- See how different teams perform
+- Track team progress throughout the season
+
+## How to Get Started
+
+### Option 1: Using the Web Version (Easiest)
+1. Open your web browser
+2. Go to: http://localhost:8000
+3. That's it! You're ready to explore F1 data
+
+### Option 2: Running on Your Computer
+If you want to run F1 Dash on your computer, follow these steps:
+
+1. **Install Required Software**
+   - Download and install Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop)
+   - Wait for the installation to complete
+
+2. **Start F1 Dash**
+   - Double-click the `start.sh` file
+   - Wait for the application to start
+   - Open your web browser and go to: http://localhost:8000
+
+## Using F1 Dash
+
+### Step 1: Choose a Race
+1. Select the year (2018-2025)
+2. Pick a race from the list
+3. Choose the session type:
+   - Practice
+   - Qualifying
+   - Race
+
+### Step 2: View Driver Data
+1. Select a driver from the list
+2. Choose a specific lap
+3. Click "Load Telemetry" to see the data
+
+### Step 3: Compare Drivers
+1. Select your first driver
+2. Choose a comparison driver
+3. Click "Compare" to see both drivers' data side by side
+
+## Understanding the Display
+
+### Speed Graph
+- Shows how fast the car is going
+- Higher lines mean faster speeds
+- Dips usually indicate corners or braking zones
+
+### Throttle/Brake Graph
+- Throttle (green): Shows how much the driver is accelerating
+- Brake (red): Shows when and how hard the driver is braking
+
+### Gear Display
+- Shows which gear the car is in
+- Higher gears (6-8) usually mean straight-line speed
+- Lower gears (1-3) usually mean corners or slow sections
+
+### Track Map
+- Color-coded sections show different parts of the track
+- Darker colors often indicate slower sections
+- Lighter colors often indicate faster sections
+
+## Tips for Better Analysis
+
+1. **Compare Similar Laps**
+   - Look at the same lap number for different drivers
+   - Compare qualifying laps with race laps
+   - Watch how tire wear affects performance
+
+2. **Focus on Key Sections**
+   - Pay attention to corner entries and exits
+   - Look at straight-line speed differences
+   - Compare braking points
+
+3. **Team Analysis**
+   - Compare teammates to see car performance
+   - Look at different teams' strengths
+   - Track development throughout the season
+
+## Troubleshooting
+
+### If the Page Doesn't Load
+1. Make sure you're using a modern web browser (Chrome, Firefox, or Safari)
+2. Check your internet connection
+3. Try refreshing the page
+
+### If Data Doesn't Appear
+1. Make sure you've selected all required options
+2. Try selecting a different lap
+3. Check if the session you selected has available data
+
+### If the Comparison Doesn't Work
+1. Make sure you've selected two different drivers
+2. Try selecting different laps
+3. Check if both drivers completed the selected laps
+
+## Need Help?
+
+If you encounter any issues:
+1. Check the status message at the top right of the screen
+2. Try refreshing the page
+3. Make sure all your selections are valid
+
+## About the Data
+
+- All data is provided by the official F1 timing system
+- Data is available for races from 2018 to 2025
+- Some historical data might be limited
+- Real-time data is available during live sessions
+
+## Privacy and Terms
+
+- This application is for educational purposes only
+- All F1 data is used in accordance with official terms
+- No personal data is collected or stored
+- The application is free to use
+
+## Support
+
+If you need help or have questions:
+1. Check the status message on the application
+2. Look for error messages in the top right corner
+3. Try refreshing the page if something doesn't work
+
+Remember: The best way to learn is to experiment! Try different combinations of drivers, laps, and sessions to discover interesting patterns and insights.
+
+
+# F1 Dash Workflow Guide
+
+## Basic Workflow
+
+### 1. Starting the Application
+1. Open your web browser
+2. Go to http://localhost:8000
+3. Wait for the dashboard to load
+
+### 2. Selecting a Session
+1. Choose a Year (2018-2025)
+   - Click the "Year" dropdown
+   - Select the desired season
+
+2. Choose a Race
+   - Click the "Race" dropdown
+   - Select from available races in that season
+
+3. Choose a Session Type
+   - Practice
+   - Qualifying
+   - Race
+
+### 3. Viewing Single Driver Data
+1. Select a Driver
+   - Click the "Driver" dropdown
+   - Choose from available drivers
+
+2. Choose a Lap
+   - Click the "Lap" dropdown
+   - Select a specific lap number
+
+3. Load the Data
+   - Click "Load Telemetry" button
+   - Wait for the data to load
+
+4. View the Results
+   - Speed graph will show the driver's speed throughout the lap
+   - Throttle/Brake graph shows acceleration and braking
+   - Gear display shows gear changes
+   - Track map shows the circuit with color-coded sections
+
+### 4. Comparing Two Drivers
+1. Select First Driver
+   - Choose from the "Driver 1" dropdown
+
+2. Select Second Driver
+   - Choose from the "Driver 2" dropdown
+
+3. Choose Laps
+   - Select lap numbers for both drivers
+   - Can be same or different laps
+
+4. Load Comparison
+   - Click "Compare" button
+   - Wait for both sets of data to load
+
+5. View Comparison
+   - Side-by-side graphs show both drivers' data
+   - Track map shows both drivers' lines
+   - Color coding helps distinguish between drivers
+
+## Advanced Workflow
+
+### 1. Track Analysis
+1. Load a Driver's Data
+2. Look at the Track Map
+   - Red sections: Slow corners
+   - Yellow sections: Medium-speed corners
+   - Green sections: High-speed sections
+   - Blue sections: Straights
+
+### 2. Performance Analysis
+1. Select a Fast Lap
+2. Look for:
+   - Smooth throttle application
+   - Early braking points
+   - Consistent corner speeds
+   - Quick gear changes
+
+### 3. Team Comparison
+1. Select Two Teammates
+2. Compare:
+   - Corner entry speeds
+   - Braking points
+   - Straight-line speed
+   - Overall lap time
+
+### 4. Race Strategy Analysis
+1. Select Multiple Laps
+2. Look for:
+   - Tire degradation
+   - Fuel load effects
+   - Traffic impact
+   - Weather effects
+
+## Common Workflows
+
+### 1. Qualifying Analysis
+1. Select Qualifying Session
+2. Choose Fastest Lap
+3. Compare with:
+   - Teammate's fastest lap
+   - Previous year's fastest lap
+   - Other team's fastest lap
+
+### 2. Race Pace Analysis
+1. Select Race Session
+2. Choose Multiple Laps
+3. Compare:
+   - First stint pace
+   - Middle stint pace
+   - Final stint pace
+
+### 3. Corner Analysis
+1. Select a Specific Lap
+2. Focus on:
+   - Corner entry speed
+   - Apex speed
+   - Exit speed
+   - Line through corner
+
+### 4. Overtaking Analysis
+1. Select Two Drivers
+2. Choose Laps with Overtaking
+3. Compare:
+   - Braking points
+   - Corner entry speeds
+   - Exit speeds
+   - DRS usage
+
+## Tips for Effective Analysis
+
+### 1. Start Simple
+- Begin with single driver analysis
+- Focus on one aspect at a time
+- Build up to more complex comparisons
+
+### 2. Use the Tools
+- Zoom in on specific sections
+- Use the pause feature
+- Save interesting comparisons
+
+### 3. Look for Patterns
+- Consistent braking points
+- Similar corner approaches
+- Team-specific characteristics
+
+### 4. Compare Effectively
+- Compare similar conditions
+- Consider track evolution
+- Account for different strategies
+
+## Troubleshooting Workflow
+
+### 1. If Data Doesn't Load
+1. Check your selections
+2. Try a different lap
+3. Refresh the page
+
+### 2. If Comparison Fails
+1. Verify both drivers completed the laps
+2. Try different lap numbers
+3. Check session type
+
+### 3. If Graphs Look Wrong
+1. Check the scale
+2. Verify the data points
+3. Try reloading the data
+
+## Best Practices
+
+### 1. Data Selection
+- Choose representative laps
+- Consider track conditions
+- Account for session type
+
+### 2. Analysis Approach
+- Start with overview
+- Zoom in on details
+- Compare systematically
+
+### 3. Documentation
+- Save interesting findings
+- Note unusual patterns
+- Record comparison results
+
+## Quick Reference
+
+### Common Actions
+- Load Data: Click "Load Telemetry"
+- Compare: Click "Compare"
+- Reset: Click "Reset"
+- Save: Click "Save"
+
+### Keyboard Shortcuts
+- Refresh: F5
+- Zoom: Mouse wheel
+- Pan: Click and drag
+- Reset view: Double-click
+
+### Color Coding
+- Red: Slow sections
+- Yellow: Medium sections
+- Green: Fast sections
+- Blue: Straights
