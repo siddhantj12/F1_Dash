@@ -1,0 +1,20 @@
+# Install Python 3.9
+curl -sSL https://www.python.org/ftp/python/3.9.18/Python-3.9.18.tgz | tar xz
+cd Python-3.9.18
+./configure --enable-optimizations
+make -j $(nproc)
+make altinstall
+cd ..
+
+# Install dependencies
+python3.9 -m pip install --upgrade pip
+python3.9 -m pip install -r requirements.txt
+
+# Create necessary directories and files
+mkdir -p api
+touch api/__init__.py
+touch src/__init__.py
+touch src/api/__init__.py
+touch src/utils/__init__.py
+touch src/models/__init__.py
+touch src/services/__init__.py 
