@@ -26,7 +26,8 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 
 # Serve static files
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 # Root endpoint to serve the frontend
 @app.get("/", include_in_schema=False)
