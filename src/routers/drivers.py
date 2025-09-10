@@ -1,65 +1,18 @@
 import fastf1
 from fastapi import APIRouter, HTTPException
 from src.utils.logger import logger
+from fastf1.plotting import get_team_color
 
 router = APIRouter()
 
-# Team color mapping for different years
-TEAM_COLORS = {
-    2024: {
-        "Mercedes": "#00D2BE",
-        "Red Bull Racing": "#0600EF", 
-        "Ferrari": "#DC0000",
-        "McLaren": "#FF8700",
-        "Alpine": "#0090FF",
-        "Aston Martin": "#006F62",
-        "Williams": "#005AFF",
-        "RB": "#6592ff",
-        "Kick Sauber": "#52E252",
-        "Haas F1 Team": "#FFFFFF"
-    },
-    2023: {
-        "Mercedes": "#00D2BE",
-        "Red Bull Racing": "#0600EF",
-        "Ferrari": "#DC0000", 
-        "McLaren": "#FF8700",
-        "Alpine": "#0090FF",
-        "Aston Martin": "#006F62",
-        "Williams": "#005AFF",
-        "AlphaTauri": "#2B4562",
-        "Alfa Romeo": "#900000",
-        "Haas F1 Team": "#FFFFFF"
-    },
-    2022: {
-        "Mercedes": "#00D2BE",
-        "Red Bull Racing": "#0600EF",
-        "Ferrari": "#DC0000",
-        "McLaren": "#FF8700", 
-        "Alpine": "#0090FF",
-        "Aston Martin": "#006F62",
-        "Williams": "#005AFF",
-        "AlphaTauri": "#2B4562",
-        "Alfa Romeo": "#900000",
-        "Haas F1 Team": "#FFFFFF"
-    },
-    2021: {
-        "Mercedes": "#00D2BE",
-        "Red Bull Racing": "#0600EF",
-        "Ferrari": "#DC0000",
-        "McLaren": "#FF8700",
-        "Alpine": "#0090FF",
-        "Aston Martin": "#006F62", 
-        "Williams": "#005AFF",
-        "AlphaTauri": "#2B4562",
-        "Alfa Romeo": "#900000",
-        "Haas F1 Team": "#FFFFFF"
-    }
-}
-
-def get_team_color(team_name, year):
-    """Get team color for a specific year"""
-    year_colors = TEAM_COLORS.get(year, TEAM_COLORS.get(2024, {}))
-    return year_colors.get(team_name, "#888888")
+def get_team_color_api(team_name, session, colormap='default', exact_match=False):
+    try:
+        color = get_team_color(team_name, session, colormap=colormap, exact_match=exact_match)
+        return {"team": team_name, "color": color}
+    except Exception as e:
+        # fallback if API fails
+        print(f"Warning: Could not fetch color for {team_name} ({e})")
+        return {"team": team_name, "color": "#888888"}
 
  
 @router.get("/drivers/{year}/{round}/{session}")
