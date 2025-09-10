@@ -27,6 +27,13 @@ env/
 venv/
 ENV/
 f1_env/
+f1-dash/
+f1dash-venv/
+F1/
+
+# Cache
+cache/
+f1_data.cursor/
 
 # IDE
 .idea/

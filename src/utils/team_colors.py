@@ -1,24 +1,28 @@
-# Team colors mapping for consistent UI
 TEAM_COLORS = {
-    "Red Bull Racing": "#0600EF",
-    "Mercedes": "#00D2BE",
-    "Ferrari": "#DC0000",
-    "McLaren": "#FF8700",
-    "Alpine": "#0090FF",
-    "AlphaTauri": "#2B4562",
-    "Aston Martin": "#006F62",
-    "Williams": "#005AFF",
-    "Alfa Romeo": "#900000",
-    "Haas F1 Team": "#FFFFFF",
-    "Racing Point": "#F596C8",
-    "Renault": "#FFF500",
-    "Toro Rosso": "#469BFF",
-    "RB": "#6592ff",
-    "Kick Sauber": "#52E252",
-    "Visa RB": "#6592ff",
-    "DEFAULT": "#888888"
+    2024: {
+        "HAM": "#6CD3BF",
+        "RUS": "#6CD3BF",  # Mercedes
+        "VER": "#3671C6",
+        "PER": "#3671C6",  # Red Bull
+        # ... (rest of your team colors)
+    }
 }
 
-def get_team_color(team_name: str) -> str:
-    """Get the color for a specific team"""
-    return TEAM_COLORS.get(team_name, TEAM_COLORS["DEFAULT"]) 
+def get_team_color(team_name, year):
+    # Fallback color for unknown teams or years
+    default_color = "#888888"
+    
+    # Get colors for the specific year, or fallback to 2024 if not found
+    year_colors = TEAM_COLORS.get(year, TEAM_COLORS.get(2024, {}))
+    
+    # Try to find the color by exact team name
+    color = year_colors.get(team_name)
+    
+    # If not found by exact name, try to find by driver code (if team_name is a driver code)
+    if color is None:
+        for driver_code, driver_color in year_colors.items():
+            if team_name.upper() == driver_code.upper():
+                color = driver_color
+                break
+    
+    return color if color is not None else default_color

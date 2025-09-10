@@ -1,4 +1,4 @@
-#!/bin/bash
+source gitingest-env/bin/activate #!/bin/bash
 
 # Create api directory if it doesn't exist
 mkdir -p api
