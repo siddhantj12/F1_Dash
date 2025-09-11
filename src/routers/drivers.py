@@ -5,16 +5,15 @@ from fastf1.plotting import get_team_color
 
 router = APIRouter()
 
-def get_team_color_api(team_name, session, colormap='default', exact_match=False):
+def get_team_color_api(team_name, session_data, colormap='default', exact_match=False):
     try:
-        color = get_team_color(team_name, session, colormap=colormap, exact_match=exact_match)
-        return {"team": team_name, "color": color}
+        color = get_team_color(team_name, session=session_data, colormap=colormap, exact_match=exact_match)
+        return color
     except Exception as e:
         # fallback if API fails
         print(f"Warning: Could not fetch color for {team_name} ({e})")
-        return {"team": team_name, "color": "#888888"}
+        return "#888888"
 
- 
 @router.get("/drivers/{year}/{round}/{session}")
 async def get_drivers(year: int, round: int, session: str):
     try:
@@ -35,7 +34,7 @@ async def get_drivers(year: int, round: int, session: str):
                         "code": info["Abbreviation"],
                         "name": f"{info.get('FirstName', '')} {info.get('LastName', '')}".strip(),
                         "team": team_name,
-                        "color": get_team_color(team_name, year)
+                        "color": get_team_color_api(team_name, session_data)
                     })
             except Exception as e:
                 logger.warning(f"Could not get info for driver {driver}: {str(e)}")
