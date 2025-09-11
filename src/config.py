@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     api_cache_ttl: int = 3600  # 1 hour
     default_year: int = 2024
 
-    supabase_url: str
-    supabase_key: str
+    supabase_url: str = ""
+    supabase_key: str = ""
 
     token_url: str = "/api/token"
 
