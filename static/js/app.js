@@ -1,28 +1,6 @@
+
 import F1DashAPI from './api.js';
 import TrackVisualizer from './track.js';
-
-// Team colors mapping
-const TEAM_COLORS = {
-    "Red Bull Racing": "#0600EF",
-    "Mercedes": "#00D2BE",
-    "Ferrari": "#DC0000",
-    "McLaren": "#FF8700",
-    "Alpine": "#0090FF",
-    "AlphaTauri": "#2B4562",
-    "Aston Martin": "#006F62",
-    "Williams": "#005AFF",
-    "Alfa Romeo": "#900000",
-    "Haas F1 Team": "#FFFFFF",
-    "Racing Point": "#F596C8",
-    "Renault": "#FFF500",
-    "Toro Rosso": "#469BFF",
-    "RB": "#6592ff", // Red Bull junior team
-    "Kick Sauber": "#52E252",
-    "Visa RB": "#6592ff",
-    
-    // Fallback color for unknown teams
-    "DEFAULT": "#888888"
-};
 
 // Debug helper function - set to false to disable
 const DEBUG_ENABLED = true;
@@ -229,7 +207,7 @@ function setupEventListeners() {
                 option.value = driver.code;
                 option.textContent = `${driver.code} - ${driver.name} (${driver.team})`;
                 option.dataset.team = driver.team;
-                option.dataset.color = driver.color || getTeamColor(driver.team);
+                option.dataset.color = driver.color; // Use color from API
                 driverSelect.appendChild(option);
             });
             
@@ -243,7 +221,7 @@ function setupEventListeners() {
                 option.value = driver.code;
                 option.textContent = `${driver.code} - ${driver.name} (${driver.team})`;
                 option.dataset.team = driver.team;
-                option.dataset.color = driver.color || getTeamColor(driver.team);
+                option.dataset.color = driver.color; // Use color from API
                 compareDriverSelect.appendChild(option);
             });
             
@@ -396,8 +374,8 @@ function setupEventListeners() {
             
             // Get selected driver's team and color
             const driverOption = driverSelect.options[driverSelect.selectedIndex];
-            const driverTeam = driverOption.dataset.team || extractTeamName(driverOption.textContent);
-            const driverColor = driverOption.dataset.color || getTeamColor(driverTeam);
+            const driverTeam = driverOption.dataset.team;
+            const driverColor = driverOption.dataset.color;
             
             debug("Selected driver info", {
                 code: driverSelect.value,
@@ -435,10 +413,8 @@ function setupEventListeners() {
                 
                 // Get comparison driver's team and color
                 const compareDriverOption = compareDriverSelect.options[compareDriverSelect.selectedIndex];
-                const compareDriverTeam = compareDriverOption.dataset.team || 
-                    extractTeamName(compareDriverOption.textContent);
-                const compareDriverColor = compareDriverOption.dataset.color || 
-                    getTeamColor(compareDriverTeam);
+                const compareDriverTeam = compareDriverOption.dataset.team;
+                const compareDriverColor = compareDriverOption.dataset.color;
                 
                 debug("Comparison driver info", {
                     code: compareDriverSelect.value,

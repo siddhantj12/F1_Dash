@@ -56,11 +56,11 @@ def get_driver_info_from_results(session_data, driver_code):
         logger.warning(f"Could not get info from results for {driver_code}: {e}")
     return None
 
-def safe_get_team_color(team_name, session_data, driver_code):
+def safe_get_team_color(team_name, session_data):
     """Safely get team color using FastF1's robust color system"""
     try:
         # Try with the team name and session
-        color = get_team_color(team_name, session_data)
+        color = get_team_color(team_name, session_data, colormap='default', exact_match=False)
         return color
     except Exception as e:
         logger.warning(f"Could not get FastF1 color for team {team_name}: {e}")
@@ -136,7 +136,7 @@ async def get_drivers(year: int, round: int, session: str):
                             full_name = result_info['full_name'] if result_info else get_driver_name_fallback(driver_code)
                             
                             # Get team color using FastF1's robust system
-                            team_color = safe_get_team_color(team_name, session_data, driver_code)
+                            team_color = safe_get_team_color(team_name, session_data)
                             
                             driver_info.append({
                                 "code": driver_code,
@@ -160,7 +160,7 @@ async def get_drivers(year: int, round: int, session: str):
                         if driver_code and driver_code not in processed_drivers:
                             team_name = result.get('TeamName', 'Unknown Team')
                             full_name = result.get('FullName', get_driver_name_fallback(driver_code))
-                            team_color = safe_get_team_color(team_name, session_data, driver_code)
+                            team_color = safe_get_team_color(team_name, session_data)
                             
                             driver_info.append({
                                 "code": driver_code,
@@ -188,7 +188,7 @@ async def get_drivers(year: int, round: int, session: str):
                         if driver_data:
                             team_name = driver_data.get('team', 'Unknown Team')
                             full_name = driver_data.get('full_name', get_driver_name_fallback(driver_code))
-                            team_color = safe_get_team_color(team_name, session_data, driver_code)
+                            team_color = safe_get_team_color(team_name, session_data)
                             
                             driver_info.append({
                                 "code": driver_code,
@@ -214,7 +214,7 @@ async def get_drivers(year: int, round: int, session: str):
             ]
             
             for driver in fallback_drivers:
-                driver["color"] = safe_get_team_color(driver["team"], session_data, driver["code"])
+                driver["color"] = safe_get_team_color(driver["team"], session_data)
                 
             driver_info = fallback_drivers
 
