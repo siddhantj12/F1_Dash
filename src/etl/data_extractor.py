@@ -13,7 +13,7 @@ from joblib import Memory, Parallel, delayed
 
 from src.config import settings
 from src.utils.logger import logger
-from src.utils.team_colors import get_team_color # Assuming get_team_color is in team_colors.py
+from src.routers.drivers import safe_get_team_color
 
 # Initialize joblib memory for persistent caching
 # Using a specific location to avoid conflicts
@@ -104,17 +104,13 @@ class TelemetryExtractor:
             f1session = self.get_session(event, session)
             laps = f1session.laps
             
-            # Use the get_team_color function from utils
-            # This part needs to be adapted if the frontend expects colors here
-            # For now, just return driver and team
-            
             unique_drivers = laps["Driver"].unique()
 
             drivers = [
                 {
                     "driver": driver,
                     "team": laps[laps.Driver == driver].Team.iloc[0],
-                    "color": get_team_color(laps[laps.Driver == driver].Team.iloc[0], self.year)
+                    "color": safe_get_team_color(laps[laps.Driver == driver].Team.iloc[0], f1session)
                 }
                 for driver in unique_drivers
             ]
