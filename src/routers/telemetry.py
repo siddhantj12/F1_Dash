@@ -124,7 +124,7 @@ async def compare_telemetry(year: int, round: int, session: str, driver1: str, l
         driver1_info = session_data.get_driver(driver1)
         driver2_info = session_data.get_driver(driver2)
         
-        from src.utils.team_colors import get_team_color
+        from src.routers.drivers import safe_get_team_color
         
         driver1_team = ""
         if driver1_info is not None and not driver1_info.empty:
@@ -134,8 +134,8 @@ async def compare_telemetry(year: int, round: int, session: str, driver1: str, l
         if driver2_info is not None and not driver2_info.empty:
             driver2_team = driver2_info.get("TeamName", "")
         
-        driver1_color = get_team_color(driver1_team, year)
-        driver2_color = get_team_color(driver2_team, year)
+        driver1_color = safe_get_team_color(driver1_team, session_data)
+        driver2_color = safe_get_team_color(driver2_team, session_data)
 
         # Skip lap time delta calculation to avoid DriverResult issues
         lap_time_1 = "N/A"

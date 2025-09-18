@@ -141,7 +141,7 @@ const F1DashAPI = {
     compareTelemetry: async (year, round, session, driver1, lap1, driver2, lap2) => {
         try {
             console.log(`Comparing telemetry: ${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`);
-            const url = `${API_BASE_URL}/compare/${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`;
+            const url =  `${API_BASE_URL}/compare/${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`;
             console.log("API URL:", url);
             
             const response = await axios.get(url);
