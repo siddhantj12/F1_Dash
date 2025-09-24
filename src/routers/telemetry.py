@@ -137,7 +137,9 @@ async def compare_telemetry(year: int, round: int, session: str, driver1: str, l
         driver1_color = safe_get_team_color(driver1_team, session_data)
         driver2_color = safe_get_team_color(driver2_team, session_data)
 
-        # Skip lap time delta calculation to avoid DriverResult issues
+        # TODO: Proper lap time and delta calculation is currently skipped due to issues with fastf1's DriverResult object,
+        # which may not reliably provide lap times for all sessions/drivers. Once DriverResult issues are resolved or a
+        # reliable method for lap time extraction is implemented, replace the placeholders below with actual lap time and delta calculation.
         lap_time_1 = "N/A"
         lap_time_2 = "N/A"  
         time_delta = 0.0
