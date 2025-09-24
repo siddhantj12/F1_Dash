@@ -3,16 +3,18 @@
  * Handles all API calls to the FastAPI backend
  */
 
-const API_BASE_URL = '/api';
+// Axios is now loaded globally via CDN in index.html
+
+const API_BASE_URL = '/api'; // Replaced process.env.NEXT_PUBLIC_API_URL
 
 // Helper function to handle API responses
 async function handleApiResponse(response, errorMessage) {
-    if (!response.ok) {
+    if (response.status < 200 || response.status >= 300) { // Check for non-2xx status
         console.error(`API Error (${response.status}): ${errorMessage}`);
-        const errorText = await response.text();
+        const errorText = response.data ? JSON.stringify(response.data) : response.statusText; // Axios response
         throw new Error(`${errorMessage} (${response.status}): ${errorText}`);
     }
-    return await response.json();
+    return response.data; // Axios returns data directly
 }
 
 // API client for F1 Dash
@@ -23,7 +25,7 @@ const F1DashAPI = {
      */
     getSeasons: async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/seasons`);
+            const response = await axios.get(`${API_BASE_URL}/seasons`);
             return await handleApiResponse(response, 'Failed to fetch seasons');
         } catch (error) {
             console.error('Error fetching seasons:', error);
@@ -38,7 +40,7 @@ const F1DashAPI = {
      */
     getRaces: async (year) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/races/${year}`);
+            const response = await axios.get(`${API_BASE_URL}/races/${year}`);
             return await handleApiResponse(response, `Failed to fetch races for ${year}`);
         } catch (error) {
             console.error(`Error fetching races for ${year}:`, error);
@@ -54,7 +56,7 @@ const F1DashAPI = {
      */
     getSessions: async (year, round) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/sessions/${year}/${round}`);
+            const response = await axios.get(`${API_BASE_URL}/sessions/${year}/${round}`);
             return await handleApiResponse(response, `Failed to fetch sessions for ${year} round ${round}`);
         } catch (error) {
             console.error(`Error fetching sessions for ${year} round ${round}:`, error);
@@ -72,8 +74,8 @@ const F1DashAPI = {
     getDrivers: async (year, round, session) => {
         try {
             console.log(`Fetching drivers: ${year}/${round}/${session}`);
-            const response = await fetch(`${API_BASE_URL}/drivers/${year}/${round}/${session}`);
-            const data = await handleApiResponse(response, `Failed to fetch drivers for ${session}`);
+            const response = await axios.get(`${API_BASE_URL}/drivers/${year}/${round}/${session}`);
+            const data = response.data; // axios returns data directly
             console.log("Drivers data:", data);
             return data;
         } catch (error) {
@@ -93,8 +95,8 @@ const F1DashAPI = {
     getLaps: async (year, round, session, driver) => {
         try {
             console.log(`Fetching laps: ${year}/${round}/${session}/${driver}`);
-            const response = await fetch(`${API_BASE_URL}/laps/${year}/${round}/${session}/${driver}`);
-            const data = await handleApiResponse(response, `Failed to fetch laps for ${driver}`);
+            const response = await axios.get(`${API_BASE_URL}/laps/${year}/${round}/${session}/${driver}`);
+            const data = response.data; // axios returns data directly
             console.log("Laps data:", data);
             return data;
         } catch (error) {
@@ -115,8 +117,8 @@ const F1DashAPI = {
     getTelemetry: async (year, round, session, driver, lap) => {
         try {
             console.log(`Fetching telemetry: ${year}/${round}/${session}/${driver}/${lap}`);
-            const response = await fetch(`${API_BASE_URL}/telemetry/${year}/${round}/${session}/${driver}/${lap}`);
-            const data = await handleApiResponse(response, `Failed to fetch telemetry for ${driver} lap ${lap}`);
+            const response = await axios.get(`${API_BASE_URL}/telemetry/${year}/${round}/${session}/${driver}/${lap}`);
+            const data = response.data; // axios returns data directly
             console.log("Telemetry data points:", data.length);
             return data;
         } catch (error) {
@@ -139,11 +141,11 @@ const F1DashAPI = {
     compareTelemetry: async (year, round, session, driver1, lap1, driver2, lap2) => {
         try {
             console.log(`Comparing telemetry: ${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`);
-            const url = `${API_BASE_URL}/compare/${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`;
+            const url =  `${API_BASE_URL}/compare/${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`;
             console.log("API URL:", url);
             
-            const response = await fetch(url);
-            const data = await handleApiResponse(response, `Failed to compare telemetry`);
+            const response = await axios.get(url);
+            const data = response.data; // axios returns data directly
             console.log("Comparison data received:", data);
             return data;
         } catch (error) {
@@ -161,8 +163,8 @@ const F1DashAPI = {
     getTrackData: async (year, round) => {
         try {
             console.log(`Fetching track data: ${year}/${round}`);
-            const response = await fetch(`${API_BASE_URL}/track/${year}/${round}`);
-            const data = await handleApiResponse(response, `Failed to fetch track data for ${year} round ${round}`);
+            const response = await axios.get(`${API_BASE_URL}/track/${year}/${round}`);
+            const data = response.data; // axios returns data directly
             console.log("Track data received:", data);
             return data;
         } catch (error) {

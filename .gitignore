@@ -27,6 +27,13 @@ env/
 venv/
 ENV/
 f1_env/
+f1-dash/
+f1dash-venv/
+F1/
+
+# Cache
+cache/
+f1_data.cursor/
 
 # IDE
 .idea/
@@ -66,3 +73,33 @@ NEWW.py
 New.py
 Test.py
 .vercel
+
+# Streamlit & Vercel files
+streamlit_app.py
+.vercelignore
+vercel.build
+vercel.json
+api/index 2.py
+
+# Other unnecessary files
+pyvenv.cfg
+runtime.txt
+Screen Recording 2025-06-01 at 10.03.20 PM.mov
+
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk

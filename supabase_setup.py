@@ -1,6 +1,22 @@
 from supabase import create_client
-     import os
+from src.config import settings
 
-     supabase_url = os.getenv("https://fnocabpmplyjfwswrpob.supabase.co")
-     supabase_key = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZub2NhYnBtcGx5amZ3c3dycG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyODEyNzcsImV4cCI6MjA2NTg1NzI3N30.ILSBclGorcyaB2NTZ1RvZlP62g7uaKmKQIEEGd4iID4")
-     supabase = create_client(https://fnocabpmplyjfwswrpob.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZub2NhYnBtcGx5amZ3c3dycG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyODEyNzcsImV4cCI6MjA2NTg1NzI3N30.ILSBclGorcyaB2NTZ1RvZlP62g7uaKmKQIEEGd4iID4)
+supabase_url = settings.supabase_url
+supabase_key = settings.supabase_key
+
+# Validate Supabase credentials before creating the client
+def _is_invalid_cred(val, default_markers):
+    return (
+        val is None
+        or not str(val).strip()
+        or str(val).strip() in default_markers
+    )
+
+_default_url_markers = {"your-supabase-url", "https://xyzcompany.supabase.co"}
+_default_key_markers = {"your-supabase-key", "public-anon-key"}
+
+if _is_invalid_cred(supabase_url, _default_url_markers):
+    raise ValueError("Supabase URL is not set or is using a default/placeholder value.")
+if _is_invalid_cred(supabase_key, _default_key_markers):
+    raise ValueError("Supabase Key is not set or is using a default/placeholder value.")
+supabase = create_client(supabase_url, supabase_key)
