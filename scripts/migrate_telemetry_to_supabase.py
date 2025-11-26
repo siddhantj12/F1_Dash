@@ -1,20 +1,17 @@
 """
 Migrate FastF1 telemetry data to Supabase.
 
-Fill in your Supabase credentials below or set them as environment variables:
-    SUPABASE_URL
-    SUPABASE_KEY
+Supabase credentials are loaded from the environment via ``supabase_setup`` so
+no secrets should be hard-coded in this script.
 """
 import os
 import fastf1
 from fastf1 import events
 import pandas as pd
-from supabase import create_client, Client
+from supabase import Client
+from supabase_setup import supabase as supabase_client
 
-SUPABASE_URL = "https://fnocabpmplyjfwswrpob.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZub2NhYnBtcGx5amZ3c3dycG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyODEyNzcsImV4cCI6MjA2NTg1NzI3N30.ILSBclGorcyaB2NTZ1RvZlP62g7uaKmKQIEEGd4iID4"
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = supabase_client
 
 YEARS = range(2020, 2026)
 SESSION_TYPES = [
