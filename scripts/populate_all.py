@@ -329,15 +329,16 @@ def populate_track_layout(year, round_num, fastf1_session):
 # ============================================================================
 # WEATHER
 # ============================================================================
-def get_existing_weather(session_id):
+def get_existing_weather(year, round_num, session_name):
     """Check if weather exists for session."""
-    res = supabase.table('weather').select('id', count='exact').eq('session_id', session_id).limit(1).execute()
+    res = supabase.table('weather').select('id', count='exact').eq('year', year).eq('round', round_num).eq('session', session_name).limit(1).execute()
     return (res.count or 0) > 0
 
 
 def populate_weather(session_id, fastf1_session, year, round_num):
     """Populate weather table for a session."""
-    if get_existing_weather(session_id):
+    session_name = fastf1_session.name
+    if get_existing_weather(year, round_num, session_name):
         return 0
     
     try:
