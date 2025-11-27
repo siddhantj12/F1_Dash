@@ -199,7 +199,18 @@ async def compare_telemetry(year: int, round: int, session: str, driver1: str, l
 async def get_track_data(year: int, round: int):
     """Get track layout data for visualization"""
     try:
-        # Load a session to get track data (using Race session)
+        # Try Supabase RPC first
+        result = supabase.rpc(
+            "rpc_get_track_layout",
+            {"p_year": year, "p_round": round}
+        ).execute()
+
+        if result.data:
+            logger.info(f"Supabase returned track layout for {year} R{round}")
+            return result.data
+
+        # Fallback to FastF1
+        logger.info(f"Supabase returned no track data, falling back to FastF1")
         session_data = fastf1.get_session(year, round, "Race")
         session_data.load()
 
