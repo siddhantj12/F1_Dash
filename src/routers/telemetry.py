@@ -4,6 +4,7 @@ from src.cache import cache
 from src.models.models import TelemetryResponse
 from fastapi import APIRouter, HTTPException
 from src.utils.logger import logger
+from supabase_setup import supabase
 
 router = APIRouter()
 
@@ -12,20 +13,28 @@ router = APIRouter()
 async def get_laps(year: int, round: int, session: str, driver: str):
     """Get all laps for a specific driver in a session"""
     try:
-        # Load session
+        # Try Supabase RPC first
+        result = supabase.rpc(
+            "rpc_get_driver_laps",
+            {"p_year": year, "p_round": round, "p_session": session, "p_driver_code": driver}
+        ).execute()
+
+        if result.data:
+            return result.data
+
+        # Fallback to FastF1 if Supabase returns empty
+        logger.info(f"Supabase returned no laps for {driver}, falling back to FastF1")
         session_data = fastf1.get_session(year, round, session)
         session_data.load()
 
-        # Get laps for the driver
         driver_laps = session_data.laps.pick_drivers([driver])
-        
+
         if driver_laps.empty:
             raise HTTPException(
                 status_code=404,
                 detail=f"No lap data found for driver {driver}",
             )
 
-        # Process lap data
         laps_data = []
         for _, lap in driver_laps.iterrows():
             lap_data = {
@@ -40,6 +49,8 @@ async def get_laps(year: int, round: int, session: str, driver: str):
 
         return laps_data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching laps: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -55,11 +66,21 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
         return cached_data
 
     try:
-        # Load session
+        # Try Supabase RPC first
+        result = supabase.rpc(
+            "rpc_get_lap_telemetry",
+            {"p_year": year, "p_round": round, "p_session": session, "p_driver_code": driver, "p_lap": lap}
+        ).execute()
+
+        if result.data:
+            await cache.set(cache_key, result.data)
+            return result.data
+
+        # Fallback to FastF1 if Supabase returns empty
+        logger.info(f"Supabase returned no telemetry for {driver} lap {lap}, falling back to FastF1")
         session_data = fastf1.get_session(year, round, session)
         session_data.load()
 
-        # Get lap data
         lap_data = session_data.laps.pick_drivers([driver]).pick_laps(lap)
 
         if lap_data.empty:
@@ -68,17 +89,10 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
                 detail=f"No lap data found for driver {driver} on lap {lap}",
             )
 
-        # Get telemetry for the lap
         telemetry = lap_data.get_telemetry().reset_index(drop=True)
 
-        # Clean data for JSON serialization
-        def clean_series(series):
-            return [float(x) if pd.notna(x) else 0.0 for x in series]
-
-        # Process telemetry data - frontend expects a flat array of objects
         telemetry_data = []
         for _, row in telemetry.iterrows():
-            # Handle Time field which might be a Timedelta
             time_value = row.get("Time", 0)
             if pd.notna(time_value):
                 if hasattr(time_value, 'total_seconds'):
@@ -87,7 +101,7 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
                     time_float = float(time_value)
             else:
                 time_float = 0.0
-                
+
             telemetry_data.append({
                 "time": time_float,
                 "speed": float(row.get("Speed", 0)) if pd.notna(row.get("Speed", 0)) else 0.0,
@@ -98,10 +112,11 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
                 "y": float(row.get("Y", 0)) if pd.notna(row.get("Y", 0)) else 0.0
             })
 
-        # Cache the response
         await cache.set(cache_key, telemetry_data)
         return telemetry_data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching telemetry: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -111,37 +126,32 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
 async def compare_telemetry(year: int, round: int, session: str, driver1: str, lap1: int, driver2: str, lap2: int):
     """Compare telemetry between two drivers on specific laps"""
     try:
-        # This completely bypasses the DriverResult issue by reusing proven working code
-        
+        # Reuse get_telemetry which now tries Supabase first
         telemetry_1_data = await get_telemetry(year, round, session, driver1, lap1)
         telemetry_2_data = await get_telemetry(year, round, session, driver2, lap2)
-        
+
         # Load session only for driver info and lap times
         session_data = fastf1.get_session(year, round, session)
         session_data.load()
-        
-        # Get driver info and team colors
+
         driver1_info = session_data.get_driver(driver1)
         driver2_info = session_data.get_driver(driver2)
-        
+
         from src.routers.drivers import safe_get_team_color
-        
+
         driver1_team = ""
         if driver1_info is not None and not driver1_info.empty:
             driver1_team = driver1_info.get("TeamName", "")
-        
+
         driver2_team = ""
         if driver2_info is not None and not driver2_info.empty:
             driver2_team = driver2_info.get("TeamName", "")
-        
+
         driver1_color = safe_get_team_color(driver1_team, session_data)
         driver2_color = safe_get_team_color(driver2_team, session_data)
 
-        # TODO: Proper lap time and delta calculation is currently skipped due to issues with fastf1's DriverResult object,
-        # which may not reliably provide lap times for all sessions/drivers. Once DriverResult issues are resolved or a
-        # reliable method for lap time extraction is implemented, replace the placeholders below with actual lap time and delta calculation.
         lap_time_1 = "N/A"
-        lap_time_2 = "N/A"  
+        lap_time_2 = "N/A"
         time_delta = 0.0
 
         comparison_data = {
@@ -193,20 +203,16 @@ async def get_track_data(year: int, round: int):
         session_data = fastf1.get_session(year, round, "Race")
         session_data.load()
 
-        # Get track data from any lap
         laps = session_data.laps
         if laps.empty:
             raise HTTPException(status_code=404, detail="No lap data found for track")
 
-        # Get telemetry from the first available lap to get track coordinates
         first_lap = laps.iloc[0]
         telemetry = first_lap.get_telemetry()
 
-        # Get circuit info
         circuit_info = session_data.event
         circuit_name = circuit_info.get('EventName', 'Unknown Circuit')
 
-        # Extract track coordinates in the format expected by frontend
         track_data = {
             "circuit_name": circuit_name,
             "coordinates": {
@@ -214,7 +220,7 @@ async def get_track_data(year: int, round: int):
                 "y": [float(y) if pd.notna(y) else 0.0 for y in telemetry["Y"]],
                 "distance": [float(d) if pd.notna(d) else 0.0 for d in telemetry["Distance"]]
             },
-            "sector_boundaries": []  # We'll add this if needed
+            "sector_boundaries": []
         }
 
         return track_data
