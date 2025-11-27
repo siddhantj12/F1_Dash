@@ -3,6 +3,7 @@ import logging
 import fastf1
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
+from supabase_setup import supabase
 
 router = APIRouter()
 
@@ -11,9 +12,17 @@ router = APIRouter()
 async def get_seasons():
     """Get available seasons/years"""
     try:
-        # Return available seasons - you can customize this list based on your data
+        # Try Supabase first
+        result = supabase.rpc("rpc_get_seasons").execute()
+
+        if result.data:
+            return JSONResponse(content=result.data)
+
+        # Fallback to hardcoded list if Supabase empty
+        logging.info("Supabase returned no seasons, using fallback list")
         available_seasons = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
         return JSONResponse(content=available_seasons)
+
     except Exception as e:
         logging.error(f"Error fetching seasons: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -22,10 +31,16 @@ async def get_seasons():
 @router.get("/races/{year}")
 async def get_races(year: int):
     try:
-        # Get all races for the year
+        # Try Supabase first
+        result = supabase.rpc("rpc_get_races", {"p_year": year}).execute()
+
+        if result.data:
+            return JSONResponse(content=result.data)
+
+        # Fallback to FastF1
+        logging.info(f"Supabase returned no races for {year}, falling back to FastF1")
         races = fastf1.get_event_schedule(year)
 
-        # Create race list with round numbers and details
         race_list = []
         for index, race in races.iterrows():
             race_list.append({
@@ -46,19 +61,25 @@ async def get_races(year: int):
 async def get_sessions(year: int, round: int):
     """Get available sessions for a race"""
     try:
-        # Get the race schedule
+        # Try Supabase first
+        result = supabase.rpc("rpc_get_sessions", {"p_year": year, "p_round": round}).execute()
+
+        if result.data:
+            return JSONResponse(content=result.data)
+
+        # Fallback to FastF1
+        logging.info(f"Supabase returned no sessions for {year} R{round}, falling back to FastF1")
         races = fastf1.get_event_schedule(year)
-        
-        # Find the race by round number
-        race = races[races.index == round - 1]  # Round is 1-based, index is 0-based
+
+        race = races[races.index == round - 1]
         if race.empty:
             raise HTTPException(status_code=404, detail="Race not found")
-        
-        # Common F1 sessions
+
         available_sessions = ["Practice 1", "Practice 2", "Practice 3", "Qualifying", "Race"]
-        
         return JSONResponse(content=available_sessions)
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching sessions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
