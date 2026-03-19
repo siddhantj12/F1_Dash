@@ -2,99 +2,74 @@
 
 Use this document to track progress populating Supabase with FastF1 data.
 
-## Current Status
+## Current Status (Last Updated: Mar 18, 2026)
 
 | Table | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | Notes |
 |-------|------|------|------|------|------|------|-------|
 | races | 17 ✅ | 22 ✅ | 23 ✅ | 22 ✅ | 24 ✅ | 24 ✅ | Complete |
 | sessions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ~5 per race |
 | drivers | 20 ✅ | 20 ✅ | 20 ✅ | 20 ✅ | 20 ✅ | 20 ✅ | Complete |
-| laps | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | Partial |
-| track_layouts | 17 ✅ | 22 ✅ | 22 ✅ | 22 ✅ | 24 ✅ | 22 ✅ | Complete |
-| weather | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Not started |
+| laps | ✅ | ✅ | ⚠️ | ✅ | ❌ | ❌ | 2023 Done (196k total) |
+| track_layouts | 17 ✅ | 22 ✅ | 22 ✅ | 22 ✅ | 24 ✅ | 22 ✅ | Complete (129 total) |
+| weather | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | 2023 Done (291 total) |
 | telemetry | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Not started (large) |
 
 ---
 
-## Scripts & Commands
+## 🛠 Unified ETL Command (RECOMMENDED)
 
-### Check Current Counts
+The new unified script handles all tables incrementally. Use this for all future population tasks:
+
 ```bash
-cd F1_Dash
-.\venv\Scripts\Activate.ps1
+# Populate a specific year (excluding telemetry)
+python scripts/populate_all.py --year 2024 --skip-telemetry
+
+# Populate a single race round
+python scripts/populate_all.py --year 2024 --round 1 --skip-telemetry
+
+# Check status
 python scripts/check_data_status.py
 ```
 
-### Populate by Year
-```bash
-# Track layouts (one year at a time)
-python scripts/populate_year.py --year 2022 --table track_layouts
+---
 
-# Weather (one year at a time)
-python scripts/populate_year.py --year 2020 --table weather
+## Roadmap & Missing Data
 
-# Laps (one year at a time)
-python scripts/populate_year.py --year 2023 --table laps
-```
+### Phase 1: Infrastructure & Schema ✅ COMPLETE
+- [x] Unified "Source of Truth" schema (`supabase/sql/full_schema.sql`)
+- [x] Dependencies fixed (`supabase`, `fastf1`, `httpx` versioning)
+- [x] Legacy ETL scripts archived
+
+### Phase 2: Weather & Laps (Filling the Gaps) 🔄 IN PROGRESS
+- [x] **2023**: All laps and weather populated ✅
+- [ ] **2020**: Weather data (17 races × 5 sessions)
+- [ ] **2021**: Weather data (22 races × 5 sessions)
+- [ ] **2022**: Weather data (22 races × 5 sessions)
+- [ ] **2024**: Laps & Weather (24 races × 5 sessions)
+- [ ] **2025**: Laps & Weather (24 races × 5 sessions)
+
+### Phase 3: Telemetry (Optional, High Volume)
+- [ ] Decide sampling rate (currently 1/10th in `populate_all.py`)
+- [ ] 2020-2025 Race sessions only (Telemetry for practice is usually skipped)
 
 ---
 
-## Checklist
-
-### Phase 1: Track Layouts ✅ COMPLETE
-- [x] 2020: 17 tracks ✅ (Completed)
-- [x] 2021: 22 tracks ✅ (Completed)
-- [x] 2022: 22 tracks ✅ (Completed)
-- [x] 2023: 22 tracks ✅ (Completed)
-- [x] 2024: 24 tracks ✅ (Completed)
-- [x] 2025: 22 tracks ✅ (Completed)
-
-**Total: 129 track layouts across all years**
-
-### Phase 2: Weather 🔄 IN PROGRESS
-- [ ] 2020 (17 races × 5 sessions)
-- [ ] 2021 (22 races × 5 sessions)
-- [ ] 2022 (22 races × 5 sessions)
-- [ ] 2023 (22 races × 5 sessions)
-- [ ] 2024 (24 races × 5 sessions)
-- [ ] 2025 (24 races × 5 sessions)
-
-### Phase 3: Laps (fill gaps)
-- [ ] Verify 2020-2022 complete
-- [ ] 2023 all
-- [ ] 2024 all
-- [ ] 2025 all
-
-### Phase 4: Telemetry (optional, large)
-- [ ] Decide sampling rate
-- [ ] 2020 Race sessions only
-- [ ] 2021 Race sessions only
-- [ ] etc.
-
----
-
-## Verification Queries
-
-Run in Supabase SQL Editor:
+## Verification Queries (Supabase SQL Editor)
 
 ```sql
--- Count by table and year
-SELECT 'races' as tbl, year, COUNT(*) FROM races GROUP BY year
-UNION ALL
-SELECT 'drivers', year, COUNT(*) FROM drivers GROUP BY year
-UNION ALL
-SELECT 'track_layouts', year, COUNT(*) FROM track_layouts GROUP BY year
-ORDER BY tbl, year;
+-- Check session and weather counts
+SELECT r.year, COUNT(s.id) as sessions, COUNT(w.id) as weather_records
+FROM races r
+LEFT JOIN sessions s ON s.race_id = r.id
+LEFT JOIN weather w ON w.session_id = s.id
+GROUP BY r.year
+ORDER BY r.year;
 ```
 
 ---
 
 ## Notes
-
-- Ergast API (used by FastF1 for schedules) sometimes goes down
-- If API fails, wait 30 min and retry
-- Scripts are incremental - they skip existing data
-- Update this tracker after each successful run
-- **Last updated**: Track layouts completed for all years (2020-2025)
-- **Current focus**: Weather data population
-
+- **Source of Truth**: Always use `scripts/populate_all.py`. Avoid legacy `etl/` scripts.
+- **Cache**: FastF1 data is cached in `fastf1_cache/` to speed up subsequent runs.
+- **Incremental**: Scripts automatically skip records that already exist in Supabase.
+- **Last action**: 2023 Full Population (Laps + Weather) completed successfully.
