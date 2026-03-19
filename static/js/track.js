@@ -21,6 +21,7 @@ class TrackVisualizer {
         this.comparisonData = null;
         this.isLoading = false;
         this.error = null;
+        this.singleDriverColor = '#e10600';
         
         // Default sector colors (white)
         this.sectorColors = ['#ffffff', '#ffffff', '#ffffff'];
@@ -195,6 +196,12 @@ class TrackVisualizer {
         
         this.render();
     }
+
+    setSingleDriverColor(color) {
+        this.singleDriverColor = color || '#e10600';
+        this.comparisonData = null;
+        this.render();
+    }
     
     /**
      * Render the track visualization
@@ -326,7 +333,14 @@ class TrackVisualizer {
             const endIdx = sector < 2 ? sectorIndices[sector + 1] : sectorIndices[0];
             
             ctx.beginPath();
-            ctx.strokeStyle = this.sectorColors[sector];
+            // Determine color for the sector
+        let sectorStrokeColor;
+        if (this.comparisonData) {
+            sectorStrokeColor = this.sectorColors[sector];
+        } else {
+            sectorStrokeColor = this.singleDriverColor; // Use single driver color for all sectors
+        }
+        ctx.strokeStyle = sectorStrokeColor;
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';

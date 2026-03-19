@@ -1,4 +1,3 @@
-
 import F1DashAPI from './api.js';
 import TrackVisualizer from './track.js';
 
@@ -51,6 +50,18 @@ const driverSelect = document.getElementById('driver-select');
 const lapSelect = document.getElementById('lap-select');
 const loadButton = document.getElementById('load-data');
 const statusElement = document.getElementById('status');
+const primaryDriverName = document.getElementById('primary-driver-name');
+const primaryDriverTeam = document.getElementById('primary-driver-team');
+const primaryDriverAvatar = document.getElementById('primary-driver-avatar');
+const compareDriverName = document.getElementById('compare-driver-name');
+const compareDriverTeam = document.getElementById('compare-driver-team');
+const compareDriverAvatar = document.getElementById('compare-driver-avatar');
+const trackTitle = document.getElementById('track-title');
+const trackSeasonPill = document.getElementById('track-season-pill');
+const insightOne = document.getElementById('insight-1');
+const insightTwo = document.getElementById('insight-2');
+const insightThree = document.getElementById('insight-3');
+const standingsList = document.getElementById('standings-list');
 
 // Chart containers
 const speedChartContainer = document.getElementById('speed-chart');
@@ -98,6 +109,8 @@ async function initApp() {
         seasonSelect.disabled = false;
         
         setStatus('Ready', false);
+
+        setupStandings();
         
         // Add event listeners
         setupEventListeners();
@@ -115,11 +128,119 @@ function setStatus(message, isLoading = false) {
     }
 }
 
+function updateDriverCard(type, driver) {
+    const isPrimary = type === 'primary';
+    const nameEl = isPrimary ? primaryDriverName : compareDriverName;
+    const teamEl = isPrimary ? primaryDriverTeam : compareDriverTeam;
+    const avatarEl = isPrimary ? primaryDriverAvatar : compareDriverAvatar;
+
+    if (!nameEl || !teamEl || !avatarEl) return;
+
+    if (!driver) {
+        nameEl.textContent = isPrimary ? 'Select a driver' : 'Optional';
+        teamEl.textContent = '—';
+        avatarEl.textContent = isPrimary ? 'P1' : 'C2';
+        avatarEl.style.background = 'rgba(225, 6, 0, 0.15)';
+        avatarEl.style.borderColor = 'rgba(225, 6, 0, 0.3)';
+        return;
+    }
+
+    nameEl.textContent = driver.name || driver.code || 'Unknown';
+    teamEl.textContent = driver.team || '—';
+    avatarEl.textContent = driver.code || (driver.name ? driver.name.slice(0, 2).toUpperCase() : 'F1');
+
+    if (driver.color) {
+        avatarEl.style.background = `${driver.color}22`;
+        avatarEl.style.borderColor = `${driver.color}66`;
+    }
+}
+
+function updateInsights(messages) {
+    const defaults = [
+        'Select a session to surface insights.',
+        'Load two drivers to compare lap pace.',
+        'Track sectors highlight time gains.'
+    ];
+    const text = messages && messages.length ? messages : defaults;
+    if (insightOne) insightOne.textContent = text[0] || defaults[0];
+    if (insightTwo) insightTwo.textContent = text[1] || defaults[1];
+    if (insightThree) insightThree.textContent = text[2] || defaults[2];
+}
+
+function updateTrackLabel() {
+    if (!trackSeasonPill) return;
+    const season = seasonSelect.value;
+    const raceOption = raceSelect.options[raceSelect.selectedIndex];
+    const raceLabel = raceOption && raceOption.value ? raceOption.textContent.split(' - ')[0] : '';
+    const session = sessionSelect.value;
+    const labelParts = [];
+    if (season) labelParts.push(season);
+    if (raceLabel) labelParts.push(raceLabel);
+    if (session) labelParts.push(session);
+    trackSeasonPill.textContent = labelParts.length ? labelParts.join(' • ') : '—';
+}
+
+function setupStandings() {
+    if (!standingsList) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${protocol}://${window.location.host}/api/ws/positions`;
+    let socket;
+
+    try {
+        socket = new WebSocket(wsUrl);
+    } catch (error) {
+        console.warn('Standings websocket failed to start', error);
+        return;
+    }
+
+    socket.onmessage = (event) => {
+        try {
+            const positions = JSON.parse(event.data);
+            if (!Array.isArray(positions) || positions.length === 0) return;
+            standingsList.innerHTML = '';
+            positions
+                .sort((a, b) => a.position - b.position)
+                .slice(0, 8)
+                .forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = 'standing-row';
+                    const gap = item.gap === null || item.gap === undefined ? '—' : `+${item.gap.toFixed(3)}`;
+                    row.innerHTML = `
+                        <div class="standing-driver">
+                            <span class="standing-position">${item.position}</span>
+                            <span>${item.driver}</span>
+                        </div>
+                        <span class="driver-meta">${gap}</span>
+                    `;
+                    standingsList.appendChild(row);
+                });
+        } catch (error) {
+            console.error('Failed to parse standings data', error);
+        }
+    };
+
+    socket.onerror = () => {
+        if (standingsList) {
+            standingsList.innerHTML = `
+                <div class="standing-row">
+                    <div class="standing-driver">
+                        <span class="standing-position">—</span>
+                        <span>Standings unavailable</span>
+                    </div>
+                    <span class="driver-meta">—</span>
+                </div>
+            `;
+        }
+    };
+}
+
 // Set up event listeners
 function setupEventListeners() {
     // Season select
     seasonSelect.addEventListener('change', async () => {
         resetSelects('race');
+        updateTrackLabel();
         
         if (!seasonSelect.value) return;
         
@@ -151,6 +272,7 @@ function setupEventListeners() {
     // Race select
     raceSelect.addEventListener('change', async () => {
         resetSelects('session');
+        updateTrackLabel();
         
         if (!raceSelect.value) return;
         
@@ -182,6 +304,7 @@ function setupEventListeners() {
     // Session select
     sessionSelect.addEventListener('change', async () => {
         resetSelects('driver');
+        updateTrackLabel();
         
         if (!sessionSelect.value) return;
         
@@ -207,7 +330,12 @@ function setupEventListeners() {
                 option.value = driver.code;
                 option.textContent = `${driver.code} - ${driver.name} (${driver.team})`;
                 option.dataset.team = driver.team;
+<<<<<<< Updated upstream
                 option.dataset.color = driver.color; // Use color from API
+=======
+                option.dataset.color = driver.color;
+                option.dataset.name = driver.name;
+>>>>>>> Stashed changes
                 driverSelect.appendChild(option);
             });
             
@@ -221,7 +349,12 @@ function setupEventListeners() {
                 option.value = driver.code;
                 option.textContent = `${driver.code} - ${driver.name} (${driver.team})`;
                 option.dataset.team = driver.team;
+<<<<<<< Updated upstream
                 option.dataset.color = driver.color; // Use color from API
+=======
+                option.dataset.color = driver.color;
+                option.dataset.name = driver.name;
+>>>>>>> Stashed changes
                 compareDriverSelect.appendChild(option);
             });
             
@@ -283,6 +416,14 @@ function setupEventListeners() {
             // Enable lap select
             lapSelect.disabled = false;
             
+            const selectedOption = driverSelect.options[driverSelect.selectedIndex];
+            updateDriverCard('primary', {
+                code: driverSelect.value,
+                name: selectedOption.dataset.name,
+                team: selectedOption.dataset.team,
+                color: selectedOption.dataset.color
+            });
+
             setStatus('Ready', false);
         } catch (error) {
             console.error('Failed to load laps:', error);
@@ -355,6 +496,14 @@ function setupEventListeners() {
             // Enable lap select
             compareLapSelect.disabled = false;
             
+            const selectedOption = compareDriverSelect.options[compareDriverSelect.selectedIndex];
+            updateDriverCard('compare', {
+                code: compareDriverSelect.value,
+                name: selectedOption.dataset.name,
+                team: selectedOption.dataset.team,
+                color: selectedOption.dataset.color
+            });
+            
             setStatus('Ready', false);
         } catch (error) {
             console.error(`Failed to load laps for ${compareDriverSelect.value}:`, error);
@@ -390,6 +539,10 @@ function setupEventListeners() {
             );
             
             debug("Track loaded", trackLoaded);
+
+            if (trackLoaded && trackVisualizer.trackData && trackTitle) {
+                trackTitle.textContent = trackVisualizer.trackData.circuit_name || 'Track + Telemetry';
+            }
             
             // Load telemetry data for primary driver
             const telemetry = await F1DashAPI.getTelemetry(
@@ -413,7 +566,8 @@ function setupEventListeners() {
                 
                 // Get comparison driver's team and color
                 const compareDriverOption = compareDriverSelect.options[compareDriverSelect.selectedIndex];
-                const compareDriverTeam = compareDriverOption.dataset.team;
+                const compareDriverTeam = compareDriverOption.dataset.team || 
+                    extractTeamName(compareDriverOption.textContent);
                 const compareDriverColor = compareDriverOption.dataset.color;
                 
                 debug("Comparison driver info", {
@@ -454,6 +608,18 @@ function setupEventListeners() {
                     
                     // Render comparison charts
                     renderComparisonCharts(comparisonData);
+
+                    const avg = (values) => values.reduce((sum, v) => sum + v, 0) / (values.length || 1);
+                    const avgSpeed1 = avg(comparisonData.driver1.data.speed);
+                    const avgSpeed2 = avg(comparisonData.driver2.data.speed);
+                    const speedDelta = avgSpeed1 - avgSpeed2;
+                    const speedLeader = speedDelta >= 0 ? comparisonData.driver1.code : comparisonData.driver2.code;
+                    const speedValue = Math.abs(speedDelta).toFixed(1);
+                    updateInsights([
+                        `${speedLeader} avg speed +${speedValue} km/h`,
+                        `Compared laps: ${comparisonData.driver1.lap} vs ${comparisonData.driver2.lap}`,
+                        `Use track colors to see sector winners`
+                    ]);
                     
                     setStatus('Comparison data loaded', false);
                 } catch (error) {
@@ -466,6 +632,16 @@ function setupEventListeners() {
             } else {
                 // Render single driver charts with appropriate color
                 renderCharts(telemetry, driverSelect.value, driverColor);
+                trackVisualizer.setSingleDriverColor(driverColor);
+                
+                const avgSpeed = telemetry.reduce((sum, point) => sum + point.speed, 0) / (telemetry.length || 1);
+                const maxSpeed = Math.max(...telemetry.map(point => point.speed));
+                updateInsights([
+                    `${driverSelect.value} avg speed ${avgSpeed.toFixed(1)} km/h`,
+                    `Peak speed ${maxSpeed.toFixed(1)} km/h`,
+                    `Lap ${lapSelect.value} loaded with ${telemetry.length} samples`
+                ]);
+
                 setStatus('Telemetry data loaded', false);
             }
         } catch (error) {
@@ -521,6 +697,9 @@ function resetSelects(changedSelect) {
     
     // Clear charts
     clearCharts();
+    updateDriverCard('primary', null);
+    updateDriverCard('compare', null);
+    updateInsights();
 }
 
 // Clear all charts

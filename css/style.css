@@ -1,0 +1,666 @@
+/* =========================================
+   DESIGN SYSTEM & VARIABLES
+   ========================================= */
+:root {
+    /* Colors */
+    --bg-dark: #0A0A0C;
+    --bg-panel: #111114;
+    --card-bg: rgba(22, 22, 26, 0.65);
+    --card-border: rgba(255, 255, 255, 0.08);
+    
+    --accent-red: #E10600;
+    --accent-red-glow: rgba(225, 6, 0, 0.35);
+    
+    --text-main: #FFFFFF;
+    --text-muted: #8F8F9D;
+    --text-dark: #1F1F23;
+    
+    /* Team Colors */
+    --team-redbull: #3671C6;
+    --team-ferrari: #F91536;
+    --team-mercedes: #6CD3BF;
+    --team-mclaren: #F58020;
+    --team-aston: #358C75;
+    
+    /* Typography */
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    
+    /* Effects */
+    --blur-heavy: blur(16px);
+    --blur-light: blur(8px);
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    /* Optional diagonal background texture/grid to match mockup */
+    background-image: radial-gradient(circle at top right, rgba(225, 6, 0, 0.1) 0%, transparent 40%),
+                      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 20px 20px, 20px 20px;
+}
+
+/* Typography Utilities */
+h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: 600; }
+.text-accent { color: var(--accent-red); }
+.text-muted { color: var(--text-muted); }
+
+/* Layout */
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* =========================================
+   LEFT SIDEBAR
+   ========================================= */
+.sidebar {
+    width: 240px;
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    z-index: 10;
+}
+
+.brand {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    padding: 0 8px;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    gap: 10px;
+    color: var(--text-muted);
+}
+.search-bar input {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    outline: none;
+    width: 100%;
+    font-family: var(--font-body);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.nav-links li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-weight: 500;
+}
+.nav-links li:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.03);
+}
+.nav-links li.active {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.08); /* fallback */
+    background: linear-gradient(90deg, rgba(225,6,0,0.15) 0%, rgba(225,6,0,0) 100%);
+    border-left: 3px solid var(--accent-red);
+}
+
+.bottom-links {
+    margin-top: auto;
+}
+
+/* =========================================
+   MAIN CONTENT & TOP BAR
+   ========================================= */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.top-bar {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--card-border);
+    backdrop-filter: var(--blur-light);
+    z-index: 5;
+}
+
+.page-title h1 {
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-right: 16px;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #00e676; /* Green for ready */
+    box-shadow: 0 0 8px rgba(0, 230, 118, 0.5);
+}
+
+.icon-btn, .profile-btn {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+}
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.profile-btn {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* =========================================
+   VIEWS & TABS
+   ========================================= */
+.views-container {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+}
+
+.view {
+    display: none;
+    height: 100%;
+    padding: 24px 32px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+.view.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   GLASSMORPHISM UTILS
+   ========================================= */
+.glass-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    backdrop-filter: var(--blur-heavy);
+    -webkit-backdrop-filter: var(--blur-heavy);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass-select {
+    width: 100%;
+    background: rgba(20, 20, 25, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    padding: 12px 16px;
+    border-radius: 8px;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 14px;
+    appearance: none;
+    cursor: pointer;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 16px top 50%;
+    background-size: 10px auto;
+    transition: var(--transition-fast);
+}
+.glass-select:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+.glass-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.glass-select option {
+    background: var(--bg-panel);
+    color: var(--text-main);
+}
+
+.btn-primary {
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--accent-red);
+    padding: 14px 24px;
+    border-radius: 24px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    box-shadow: 0 0 15px var(--accent-red-glow);
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-red);
+    box-shadow: 0 0 25px var(--accent-red-glow);
+}
+.btn-primary:disabled {
+    border-color: var(--card-border);
+    color: var(--text-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   TELEMETRY LAYOUT
+   ========================================= */
+.telemetry-layout {
+    display: flex;
+    gap: 24px;
+    height: 100%;
+}
+
+.control-panel {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex-shrink: 0;
+}
+
+.center-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+}
+
+.right-panel {
+    width: 320px;
+    flex-shrink: 0;
+}
+
+/* DRIVER CARDS */
+.drivers-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.driver-card {
+    background: linear-gradient(135deg, rgba(30, 30, 35, 0.8) 0%, rgba(15, 15, 18, 0.8) 100%);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+}
+.driver-card.primary {
+    border-color: rgba(54, 113, 198, 0.5); /* Redbull Blue for demo */
+    box-shadow: 0 0 20px rgba(54, 113, 198, 0.15);
+}
+.driver-card.comparison {
+    border-color: rgba(249, 21, 54, 0.5); /* Ferrari Red for demo */
+}
+.driver-card.locked {
+    opacity: 0.5;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+.card-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+.driver-profile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.driver-number {
+    font-family: var(--font-heading);
+    font-size: 32px;
+    font-weight: 800;
+    font-style: italic;
+    color: var(--accent-red);
+}
+.driver-image {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #333;
+    /* Placeholder gradient */
+    background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+}
+.dropdown-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.huge-cta {
+    width: 100%;
+    margin-top: auto;
+}
+
+/* CENTER PANEL - TRACK & CHARTS */
+.track-card {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 380px;
+}
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.track-canvas-container {
+    width: 100%;
+    height: 280px;
+    position: relative;
+    overflow: hidden;
+}
+#track-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.insight-chips {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+.chip {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+.chip.outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.charts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1; /* take up bottom half */
+}
+.chart-card {
+    flex: 1;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+}
+.chart-card h3 {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+.chart-wrapper {
+    flex: 1;
+    position: relative;
+    width: 100%;
+}
+/* Right Panel - Standings */
+.standings-card {
+    height: 100%;
+    padding: 24px;
+}
+.standings-card h2 {
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+.standings-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.standing-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.standing-item:last-child {
+    border-bottom: none;
+}
+.standing-item .pos {
+    width: 24px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.standing-item .team-color {
+    width: 4px;
+    height: 16px;
+    border-radius: 2px;
+    margin-right: 12px;
+}
+.team-color.redbull { background: var(--team-redbull); }
+.team-color.ferrari { background: var(--team-ferrari); }
+.team-color.mercedes { background: var(--team-mercedes); }
+.team-color.mclaren { background: var(--team-mclaren); }
+
+.standing-item .name {
+    flex: 1;
+    font-weight: 500;
+}
+.standing-item .gap {
+    font-family: monospace;
+    color: #e0e0e0;
+}
+
+/* =========================================
+   NEWS / INSIGHTS HUB (MOCKUP 3)
+   ========================================= */
+.news-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.hero-spotlight {
+    position: relative;
+    height: 380px;
+    display: flex;
+    align-items: flex-end;
+    padding: 40px;
+    overflow: hidden;
+}
+.hero-image-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* Simulate a Ferrari background image */
+    background: linear-gradient(to right, rgba(10, 10, 12, 0.9) 0%, rgba(10, 10, 12, 0.4) 50%, rgba(10, 10, 12, 0.1) 100%),
+                url('https://images.unsplash.com/photo-1627626021644-8ea13a111a68?auto=format&fit=crop&q=80&w=1600') center/cover;
+    z-index: 0;
+}
+.hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 600px;
+}
+.hero-content h3 {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.hero-content h1 {
+    font-size: 42px;
+    line-height: 1.1;
+    margin-bottom: 24px;
+}
+.tags {
+    display: flex;
+    gap: 12px;
+}
+.tag {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: var(--blur-light);
+}
+
+.insights-ribbon {
+    display: flex;
+    align-items: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    padding: 12px 24px;
+    overflow: hidden;
+}
+.ribbon-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 24px;
+    white-space: nowrap;
+}
+.marquee-content {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+}
+.marquee-content p {
+    display: inline-block;
+    animation: marquee 20s linear infinite;
+}
+@keyframes marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+.news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+}
+.news-card {
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+    transition: var(--transition-normal);
+    cursor: pointer;
+}
+.news-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.news-card.highlight-border {
+    border: 1px solid var(--accent-red);
+    box-shadow: 0 0 20px var(--accent-red-glow);
+}
+.card-img {
+    width: 120px;
+    height: 90px;
+    border-radius: 8px;
+    background: #444;
+    flex-shrink: 0;
+}
+.card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.brand-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.text-redbull { color: var(--team-redbull); }
+.news-card h4 {
+    font-size: 16px;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+.news-card .subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+   ========================================= */
+@media (max-width: 1024px) {
+    .telemetry-layout {
+        flex-direction: column;
+    }
+    .control-panel, .right-panel {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .huge-cta { grid-column: 1 / -1; }
+}
+
+@media (max-width: 768px) {
+    .app-container { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; padding: 16px; }
+    .control-panel, .right-panel { grid-template-columns: 1fr; }
+}
