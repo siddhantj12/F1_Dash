@@ -7,11 +7,11 @@ Use this document to track progress populating Supabase with FastF1 data.
 | Table | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | Notes |
 |-------|------|------|------|------|------|------|-------|
 | races | 17 ✅ | 22 ✅ | 23 ✅ | 22 ✅ | 24 ✅ | 24 ✅ | Complete |
-| sessions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ~5 per race |
+| sessions | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | 2024 R1-R12 Done |
 | drivers | 20 ✅ | 20 ✅ | 20 ✅ | 20 ✅ | 20 ✅ | 20 ✅ | Complete |
-| laps | ✅ | ✅ | ⚠️ | ✅ | ❌ | ❌ | 2023 Done (196k total) |
+| laps | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ❌ | 2024 R1-R12 Done |
 | track_layouts | 17 ✅ | 22 ✅ | 22 ✅ | 22 ✅ | 24 ✅ | 22 ✅ | Complete (129 total) |
-| weather | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | 2023 Done (291 total) |
+| weather | ❌ | ❌ | ❌ | ✅ | ⚠️ | ❌ | 2024 R1-R12 Done |
 | telemetry | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Not started (large) |
 
 ---
