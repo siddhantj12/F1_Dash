@@ -1,13 +1,12 @@
 import os
 import fastf1
-from supabase import create_client, Client
+from supabase import Client
+from supabase_setup import supabase as supabase_client
 import datetime
 import re
 import unicodedata
 
-SUPABASE_URL = "https://fnocabpmplyjfwswrpob.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZub2NhYnBtcGx5amZ3c3dycG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyODEyNzcsImV4cCI6MjA2NTg1NzI3N30.ILSBclGorcyaB2NTZ1RvZlP62g7uaKmKQIEEGd4iID4"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = supabase_client
 
 CACHE_DIR = 'cache'
 
