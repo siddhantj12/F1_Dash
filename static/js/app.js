@@ -330,12 +330,8 @@ function setupEventListeners() {
                 option.value = driver.code;
                 option.textContent = `${driver.code} - ${driver.name} (${driver.team})`;
                 option.dataset.team = driver.team;
-<<<<<<< Updated upstream
-                option.dataset.color = driver.color; // Use color from API
-=======
                 option.dataset.color = driver.color;
                 option.dataset.name = driver.name;
->>>>>>> Stashed changes
                 driverSelect.appendChild(option);
             });
             
@@ -349,12 +345,8 @@ function setupEventListeners() {
                 option.value = driver.code;
                 option.textContent = `${driver.code} - ${driver.name} (${driver.team})`;
                 option.dataset.team = driver.team;
-<<<<<<< Updated upstream
-                option.dataset.color = driver.color; // Use color from API
-=======
                 option.dataset.color = driver.color;
                 option.dataset.name = driver.name;
->>>>>>> Stashed changes
                 compareDriverSelect.appendChild(option);
             });
             
