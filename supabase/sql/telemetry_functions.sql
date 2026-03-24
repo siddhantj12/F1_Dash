@@ -104,17 +104,18 @@ BEGIN
         RETURN '[]'::jsonb;
     END IF;
 
+    -- telemetry.timestamp is FLOAT (seconds into lap), not timestamptz — use as-is
     SELECT COALESCE(
         jsonb_agg(
             jsonb_build_object(
-                'time', EXTRACT(EPOCH FROM t."timestamp"),
-                'speed', COALESCE(t.speed, 0),
-                'throttle', COALESCE(t.throttle, 0),
-                'brake', COALESCE(t.brake, 0),
+                'time', COALESCE(t."timestamp", 0::double precision),
+                'speed', COALESCE(t.speed, 0::double precision),
+                'throttle', COALESCE(t.throttle, 0::double precision),
+                'brake', COALESCE(t.brake, 0::double precision),
                 'gear', COALESCE(t.gear, 0),
-                'x', COALESCE(t.x, 0),
-                'y', COALESCE(t.y, 0),
-                'distance', COALESCE(t.distance, 0)
+                'x', COALESCE(t.x, 0::double precision),
+                'y', COALESCE(t.y, 0::double precision),
+                'distance', COALESCE(t.distance, 0::double precision)
             )
             ORDER BY t."timestamp"
         ),
