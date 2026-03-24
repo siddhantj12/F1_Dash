@@ -6,6 +6,7 @@ Usage:
     python scripts/populate_all.py --year 2024       # Single year
     python scripts/populate_all.py --year 2024 --round 1  # Single race
     python scripts/populate_all.py --skip-telemetry  # Skip telemetry (large)
+    python scripts/populate_all.py --year 2023 --round 1 --telemetry-sample-rate 10  # Race telemetry only (default rate)
 
 Features:
     - Incremental: skips already-populated data
@@ -210,19 +211,55 @@ def get_existing_telemetry_count(lap_id):
 def get_lap_id(session_id, driver_code, lap_number):
     """Get lap_id from Supabase."""
     res = supabase.table('laps').select('id').eq('session_id', session_id).eq('driver_code', driver_code).eq('lap_number', lap_number).limit(1).execute()
-    return res.data[0]['id'] if res.data else None
+    if not res.data:
+        # log(f"      Lap not found: SID={session_id}, Drv={driver_code}, L#{lap_number}")
+        return None
+    return res.data[0]['id']
+
+
+def _lap_time_seconds(row_time):
+    """Match semantics used in src/routers/telemetry.py (seconds into lap)."""
+    if row_time is None or not pd.notna(row_time):
+        return 0.0
+    if hasattr(row_time, 'total_seconds'):
+        return float(row_time.total_seconds())
+    try:
+        return float(row_time)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _brake_as_float(val):
+    if val is None or not pd.notna(val):
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return 1.0 if bool(val) else 0.0
+
+
+def _optional_float(val):
+    return float(val) if val is not None and pd.notna(val) else None
+
+
+def _optional_int(val):
+    return int(val) if val is not None and pd.notna(val) else None
 
 
 def populate_telemetry(session_id, fastf1_session, sample_rate=10):
     """
-    Populate telemetry table for a session.
-    sample_rate: only store every Nth point to reduce data volume.
+    Populate telemetry table for a session (full merged channel: XY + speed, etc.).
+    sample_rate: keep every Nth row from FastF1 merged telemetry (~20Hz source).
+    Skips laps that already have any telemetry rows (idempotent re-runs).
     """
     laps_df = fastf1_session.laps
     if laps_df.empty:
+        log("      No laps found in FastF1 session")
         return 0
     
+    log(f"      Processing telemetry for {len(laps_df)} laps (1/{sample_rate} samples)...")
     inserted = 0
+    error_logged = 0
     
     for _, lap in laps_df.iterrows():
         driver_code = lap.get('Driver', '')
@@ -232,42 +269,52 @@ def populate_telemetry(session_id, fastf1_session, sample_rate=10):
         if not lap_id:
             continue
         
-        # Skip if already has telemetry
         if get_existing_telemetry_count(lap_id) > 0:
             continue
         
         try:
-            tel = lap.get_car_data()
+            tel = lap.get_telemetry()
             if tel is None or tel.empty:
                 continue
             
-            # Sample telemetry to reduce volume
+            tel = tel.reset_index(drop=True)
             tel_sampled = tel.iloc[::sample_rate]
             
             batch = []
             for _, row in tel_sampled.iterrows():
-                time_val = row.get('Time')
-                if pd.notna(time_val) and hasattr(time_val, 'total_seconds'):
-                    time_sec = time_val.total_seconds()
-                else:
-                    time_sec = None
+                time_sec = _lap_time_seconds(row.get('Time'))
+                brake_val = _brake_as_float(row.get('Brake'))
+                ngear = row.get('nGear')
+                gear_val = _optional_int(ngear)
                 
                 batch.append({
                     'lap_id': lap_id,
                     'timestamp': time_sec,
-                    'speed': float(row.get('Speed', 0)) if pd.notna(row.get('Speed')) else None,
-                    'throttle': float(row.get('Throttle', 0)) if pd.notna(row.get('Throttle')) else None,
-                    'brake': float(row.get('Brake', 0)) if pd.notna(row.get('Brake')) else None,
-                    'gear': int(row.get('nGear', 0)) if pd.notna(row.get('nGear')) else None
+                    'speed': _optional_float(row.get('Speed')),
+                    'throttle': _optional_float(row.get('Throttle')),
+                    'brake': brake_val,
+                    'gear': gear_val,
+                    'rpm': _optional_float(row.get('RPM')),
+                    'drs': _optional_int(row.get('DRS')),
+                    'distance': _optional_float(row.get('Distance')),
+                    'x': _optional_float(row.get('X')),
+                    'y': _optional_float(row.get('Y')),
+                    'z': _optional_float(row.get('Z')),
                 })
             
             if batch:
                 supabase.table('telemetry').insert(batch).execute()
                 inserted += len(batch)
+                if inserted % 5000 == 0:
+                    log(f"      Progress: {inserted} telemetry points...")
                 
         except Exception as e:
-            # Telemetry often fails for certain laps
-            pass
+            error_logged += 1
+            if error_logged <= 5:
+                log(f"      Telemetry error lap {lap_number} ({driver_code}): {e}")
+    
+    if error_logged > 5:
+        log(f"      ... {error_logged - 5} more telemetry lap errors (not shown)")
     
     return inserted
 
@@ -368,7 +415,7 @@ def populate_weather(session_id, fastf1_session, year, round_num):
 # ============================================================================
 # MAIN ORCHESTRATION
 # ============================================================================
-def populate_session(year, round_num, session_type, race_id, include_telemetry=True):
+def populate_session(year, round_num, session_type, race_id, include_telemetry=True, telemetry_sample_rate=10):
     """Populate all data for a single session."""
     session_id = get_or_create_session(race_id, session_type)
     if not session_id:
@@ -394,7 +441,7 @@ def populate_session(year, round_num, session_type, race_id, include_telemetry=T
         
         # Telemetry (only for Race to limit volume)
         if include_telemetry and session_type == 'Race':
-            tel_inserted = populate_telemetry(session_id, fastf1_session)
+            tel_inserted = populate_telemetry(session_id, fastf1_session, sample_rate=telemetry_sample_rate)
             if tel_inserted:
                 log(f"      Inserted {tel_inserted} telemetry points")
         
@@ -402,7 +449,7 @@ def populate_session(year, round_num, session_type, race_id, include_telemetry=T
         log(f"      Session error: {e}")
 
 
-def populate_race(year, round_num, event, include_telemetry=True):
+def populate_race(year, round_num, event, include_telemetry=True, telemetry_sample_rate=10):
     """Populate all data for a single race weekend."""
     race_id = get_or_create_race(year, round_num, event)
     if not race_id:
@@ -423,10 +470,12 @@ def populate_race(year, round_num, event, include_telemetry=True):
     # Sessions
     for session_type in SESSION_TYPES:
         log(f"    {session_type}...")
-        populate_session(year, round_num, session_type, race_id, include_telemetry)
+        populate_session(
+            year, round_num, session_type, race_id, include_telemetry, telemetry_sample_rate
+        )
 
 
-def populate_year(year, specific_round=None, include_telemetry=True):
+def populate_year(year, specific_round=None, include_telemetry=True, telemetry_sample_rate=10):
     """Populate all data for a season."""
     log(f"\n{'='*60}")
     log(f"YEAR {year}")
@@ -450,7 +499,7 @@ def populate_year(year, specific_round=None, include_telemetry=True):
         if specific_round and round_num != specific_round:
             continue
         
-        populate_race(year, round_num, event, include_telemetry)
+        populate_race(year, round_num, event, include_telemetry, telemetry_sample_rate)
 
 
 def main():
@@ -458,18 +507,29 @@ def main():
     parser.add_argument('--year', type=int, help='Specific year to populate')
     parser.add_argument('--round', type=int, help='Specific round to populate')
     parser.add_argument('--skip-telemetry', action='store_true', help='Skip telemetry data')
+    parser.add_argument(
+        '--telemetry-sample-rate',
+        type=int,
+        default=10,
+        metavar='N',
+        help='For Race telemetry: insert every Nth FastF1 sample (default 10 ≈ 2 Hz from ~20 Hz)',
+    )
     args = parser.parse_args()
     
     include_telemetry = not args.skip_telemetry
+    if args.telemetry_sample_rate < 1:
+        raise SystemExit('--telemetry-sample-rate must be >= 1')
     
     log("Starting Supabase population...")
     log(f"Telemetry: {'enabled' if include_telemetry else 'disabled'}")
+    if include_telemetry:
+        log(f"Telemetry sample rate: 1/{args.telemetry_sample_rate}")
     
     if args.year:
-        populate_year(args.year, args.round, include_telemetry)
+        populate_year(args.year, args.round, include_telemetry, args.telemetry_sample_rate)
     else:
         for year in YEARS:
-            populate_year(year, None, include_telemetry)
+            populate_year(year, None, include_telemetry, args.telemetry_sample_rate)
     
     log("\nDone!")
 
