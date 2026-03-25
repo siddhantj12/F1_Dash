@@ -203,9 +203,34 @@ def populate_laps(session_id, fastf1_session):
 # TELEMETRY
 # ============================================================================
 def get_existing_telemetry_count(lap_id):
-    """Check if telemetry exists for a lap."""
-    res = supabase.table('telemetry').select('id', count='exact').eq('lap_id', lap_id).limit(1).execute()
-    return res.count or 0
+    """Check if telemetry exists for a lap (cheap existence check)."""
+    # Avoid count='exact' here; it can be slow and trigger statement timeouts.
+    res = supabase.table('telemetry').select('id').eq('lap_id', lap_id).limit(1).execute()
+    return 1 if res.data else 0
+
+
+def _is_transient_supabase_error(err: Exception) -> bool:
+    msg = str(err)
+    # Common transient cases we have seen during backfills:
+    # - Cloudflare/Supabase 502 (HTML instead of JSON)
+    # - Postgres statement timeout (57014)
+    return (" 502" in msg) or ("Bad gateway" in msg) or ("57014" in msg) or ("statement timeout" in msg)
+
+
+def _retry(fn, *, tries=5, base_sleep_s=0.75):
+    """Retry helper for transient Supabase errors (best-effort)."""
+    import time
+
+    last_err = None
+    for attempt in range(tries):
+        try:
+            return fn()
+        except Exception as e:
+            last_err = e
+            if (attempt == tries - 1) or (not _is_transient_supabase_error(e)):
+                raise
+            time.sleep(base_sleep_s * (2 ** attempt))
+    raise last_err
 
 
 def get_lap_id(session_id, driver_code, lap_number):
@@ -269,10 +294,11 @@ def populate_telemetry(session_id, fastf1_session, sample_rate=10):
         if not lap_id:
             continue
         
-        if get_existing_telemetry_count(lap_id) > 0:
-            continue
-        
         try:
+            # Skip if already has telemetry (keep this inside try so timeouts don't abort the session)
+            if _retry(lambda: get_existing_telemetry_count(lap_id), tries=4) > 0:
+                continue
+
             tel = lap.get_telemetry()
             if tel is None or tel.empty:
                 continue
@@ -303,7 +329,7 @@ def populate_telemetry(session_id, fastf1_session, sample_rate=10):
                 })
             
             if batch:
-                supabase.table('telemetry').insert(batch).execute()
+                _retry(lambda: supabase.table('telemetry').insert(batch).execute(), tries=6)
                 inserted += len(batch)
                 if inserted % 5000 == 0:
                     log(f"      Progress: {inserted} telemetry points...")
