@@ -8,6 +8,30 @@ window.getDriverColor = (driverCode, teamName) => {
     return TEAM_COLORS[teamName.trim()] || '#E10600';
 };
 
+// Driver code to car number mapping
+const DRIVER_NUMBERS = {
+    VER: 1, PER: 11, HAM: 44, RUS: 63, LEC: 16, SAI: 55,
+    NOR: 4, PIA: 81, ALO: 14, STR: 18, GAS: 10, OCO: 31,
+    TSU: 22, RIC: 3, BOT: 77, ZHO: 24, MAG: 20, HUL: 27,
+    ALB: 23, SAR: 2, LAW: 40, DEV: 45, BEA: 87, COL: 43,
+    DOO: 61, HAD: 98, BOR: 38, ANT: 55, DRU: 34, BER: 33,
+    VET: 5, MSC: 47, LAT: 6, RAI: 7
+};
+
+// Parse pandas Timedelta string (e.g. "0 days 00:00:25.123000") to seconds
+function parseSectorTime(str) {
+    if (!str) return 0;
+    // Try plain numeric first
+    const num = parseFloat(str);
+    if (!isNaN(num) && !str.includes(':')) return num;
+    // Parse "0 days HH:MM:SS.ffffff"
+    const match = str.match(/(\d+):(\d+):([\d.]+)/);
+    if (match) {
+        return parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
+    }
+    return 0;
+}
+
 // Debug helper function - set to false to disable
 const DEBUG_ENABLED = true;
 
@@ -151,6 +175,7 @@ function updateDriverCard(type, driver) {
     const nameEl = isPrimary ? primaryDriverName : compareDriverName;
     const teamEl = isPrimary ? primaryDriverTeam : compareDriverTeam;
     const avatarEl = isPrimary ? primaryDriverAvatar : compareDriverAvatar;
+    const numEl = document.getElementById(isPrimary ? 'primary-driver-number' : 'compare-driver-number');
 
     if (!nameEl || !teamEl || !avatarEl) return;
 
@@ -160,12 +185,23 @@ function updateDriverCard(type, driver) {
         avatarEl.textContent = isPrimary ? 'P1' : 'C2';
         avatarEl.style.background = 'rgba(225, 6, 0, 0.15)';
         avatarEl.style.borderColor = 'rgba(225, 6, 0, 0.3)';
+        if (numEl) numEl.textContent = '—';
         return;
     }
 
     nameEl.textContent = driver.name || driver.code || 'Unknown';
     teamEl.textContent = driver.team || '—';
     avatarEl.textContent = driver.code || (driver.name ? driver.name.slice(0, 2).toUpperCase() : 'F1');
+
+    // Update driver number dynamically
+    if (numEl && driver.code) {
+        const num = DRIVER_NUMBERS[driver.code];
+        numEl.textContent = num !== undefined ? num : '—';
+        if (driver.color) {
+            numEl.style.color = driver.color;
+            numEl.style.textShadow = `0 0 20px ${driver.color}66`;
+        }
+    }
 
     if (driver.color) {
         avatarEl.style.background = `${driver.color}22`;
@@ -185,6 +221,62 @@ function updateInsights(messages) {
     if (insightThree) insightThree.textContent = text[2] || defaults[2];
 }
 
+function updateComparisonMeta(cmp) {
+    const n1 = document.getElementById('meta-name-1');
+    const t1 = document.getElementById('meta-team-1');
+    const a1 = document.getElementById('meta-avatar-1');
+    const n2 = document.getElementById('meta-name-2');
+    const t2 = document.getElementById('meta-team-2');
+    const a2 = document.getElementById('meta-avatar-2');
+    if (!n1 || !n2) return;
+
+    const d1 = cmp.driver1, d2 = cmp.driver2, delta = cmp.delta;
+    n1.textContent = `${d1.code} — Lap ${d1.lap}`;
+    t1.textContent = d1.lapTime && d1.lapTime !== 'N/A' ? d1.lapTime : (d1.team || '—');
+    a1.textContent = d1.code;
+    if (d1.color) { a1.style.background = `${d1.color}22`; a1.style.borderColor = `${d1.color}66`; }
+
+    n2.textContent = `${d2.code} — Lap ${d2.lap}`;
+    t2.textContent = d2.lapTime && d2.lapTime !== 'N/A' ? d2.lapTime : (d2.team || '—');
+    a2.textContent = d2.code;
+    if (d2.color) { a2.style.background = `${d2.color}22`; a2.style.borderColor = `${d2.color}66`; }
+
+    const vsEl = document.querySelector('.vs-divider');
+    if (vsEl && delta && delta.time != null) {
+        const dt = delta.time;
+        const faster = dt < 0 ? d1.code : d2.code;
+        vsEl.textContent = `${faster} +${Math.abs(dt).toFixed(3)}s`;
+    }
+}
+
+function updateTrackLegend(driver1Info, driver2Info) {
+    const legend = document.getElementById('track-legend');
+    if (!legend) return;
+
+    if (!driver1Info && !driver2Info) {
+        legend.classList.remove('visible');
+        legend.innerHTML = '';
+        return;
+    }
+
+    legend.innerHTML = '';
+    const makeItem = (info) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        const num = DRIVER_NUMBERS[info.code];
+        item.innerHTML =
+            `<span class="legend-swatch" style="background:${info.color || '#888'}"></span>` +
+            (num !== undefined ? `<span class="legend-number">#${num}</span>` : '') +
+            `<span class="legend-code">${info.code}</span>` +
+            `<span class="legend-team">${info.team || ''}</span>`;
+        return item;
+    };
+
+    if (driver1Info) legend.appendChild(makeItem(driver1Info));
+    if (driver2Info) legend.appendChild(makeItem(driver2Info));
+    legend.classList.add('visible');
+}
+
 function updateTrackLabel() {
     if (!trackSeasonPill) return;
     const season = seasonSelect.value;
@@ -198,83 +290,98 @@ function updateTrackLabel() {
     trackSeasonPill.textContent = labelParts.length ? labelParts.join(' • ') : '—';
 }
 
-function setupStandings() {
-    if (!standingsList) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsUrl = `${protocol}://${window.location.host}/api/ws/positions`;
-    let socket;
-
-    try {
-        socket = new WebSocket(wsUrl);
-    } catch (error) {
-        console.warn('Standings websocket failed to start', error);
-        loadStandingsFromREST();
-        return;
-    }
-
-    socket.onmessage = (event) => {
-        try {
-            const positions = JSON.parse(event.data);
-            if (!Array.isArray(positions) || positions.length === 0) return;
-            renderStandingsRows(positions);
-        } catch (error) {
-            console.error('Failed to parse standings data', error);
-        }
-    };
-
-    socket.onerror = () => {
-        loadStandingsFromREST();
-    };
-
-    socket.onclose = () => {
-        loadStandingsFromREST();
-    };
-}
-
-async function loadStandingsFromREST() {
-    if (!standingsList) return;
-    try {
-        const resp = await axios.get('/api/positions');
-        if (resp.data && Array.isArray(resp.data) && resp.data.length > 0) {
-            renderStandingsRows(resp.data);
-        }
-    } catch {
-        // Keep the static placeholder rows from index.html
-    }
-}
+const TEAM_COLOR_MAP = {
+    'Red Bull Racing': '#3671C6', 'Red Bull': '#3671C6',
+    'Ferrari': '#F91536', 'Scuderia Ferrari': '#F91536',
+    'Mercedes': '#6CD3BF', 'McLaren': '#FF8000',
+    'Aston Martin': '#358C75', 'Alpine': '#FF87BC',
+    'AlphaTauri': '#5E8FAA', 'RB': '#5E8FAA',
+    'Haas F1 Team': '#B6BABD', 'Haas': '#B6BABD',
+    'Williams': '#64C4FF', 'Alfa Romeo': '#C92D4B',
+    'Kick Sauber': '#00CF46',
+};
 
 function renderStandingsRows(positions) {
-    const teamColorMap = {
-        'Red Bull Racing': '#3671C6', 'Red Bull': '#3671C6',
-        'Ferrari': '#F91536', 'Scuderia Ferrari': '#F91536',
-        'Mercedes': '#6CD3BF', 'McLaren': '#FF8000',
-        'Aston Martin': '#358C75', 'Alpine': '#FF87BC',
-        'AlphaTauri': '#5E8FAA', 'RB': '#5E8FAA',
-        'Haas F1 Team': '#B6BABD', 'Haas': '#B6BABD',
-        'Williams': '#64C4FF', 'Alfa Romeo': '#C92D4B',
-        'Kick Sauber': '#00CF46',
-    };
+    if (!standingsList || !positions || positions.length === 0) return;
     standingsList.innerHTML = '';
     positions
-        .sort((a, b) => a.position - b.position)
-        .slice(0, 8)
+        .sort((a, b) => (a.position || 99) - (b.position || 99))
+        .slice(0, 20)
         .forEach((item) => {
             const row = document.createElement('div');
             row.className = 'standing-row';
-            const gap = item.position === 1 ? 'LEAD'
-                : (item.gap === null || item.gap === undefined ? '—' : `+${Number(item.gap).toFixed(3)}`);
-            const gapClass = item.position === 1 ? 'standing-gap leader' : 'standing-gap';
+            const label = item.lap_time && item.lap_time !== 'N/A' && item.lap_time !== '—'
+                ? item.lap_time
+                : (item.gap != null ? `+${Number(item.gap).toFixed(3)}` : '—');
             const posClass = item.position <= 3 ? 'standing-position top3' : 'standing-position';
-            const color = teamColorMap[item.team] || '#B6BABD';
+            const color = TEAM_COLOR_MAP[item.team] || '#B6BABD';
             row.innerHTML = `
-                <span class="${posClass}">${item.position}</span>
+                <span class="${posClass}">${item.position || '—'}</span>
                 <span class="team-stripe" style="background:${color}"></span>
                 <span class="standing-name">${item.driver || item.code || '—'}</span>
-                <span class="${gapClass}">${gap}</span>
+                <span class="standing-gap">${label}</span>
             `;
             standingsList.appendChild(row);
         });
+}
+
+async function refreshStandings() {
+    if (!lapSelect.value || !seasonSelect.value || !raceSelect.value || !sessionSelect.value) return;
+
+    if (standingsList) {
+        standingsList.innerHTML = '<div style="text-align:center;opacity:0.4;padding:12px;font-size:12px;">Loading standings…</div>';
+    }
+
+    try {
+        const url = `/api/standings/${seasonSelect.value}/${raceSelect.value}/${sessionSelect.value}/${lapSelect.value}`;
+        console.log('[Standings] GET', url);
+        const resp = await axios.get(url);
+        const positions = resp.data;
+        console.log('[Standings] received', positions?.length, 'rows');
+        if (positions && positions.length > 0) {
+            renderStandingsRows(positions);
+        } else {
+            if (standingsList) standingsList.innerHTML = '';
+        }
+    } catch (err) {
+        console.error('[Standings] Error:', err.response?.status, err.response?.data || err.message);
+        if (standingsList) standingsList.innerHTML = '';
+    }
+}
+
+function setupStandings() {
+    if (!standingsList) return;
+    standingsList.innerHTML = '';
+
+    // WebSocket for live sessions (best-effort)
+    try {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(`${protocol}://${window.location.host}/api/ws/positions`);
+        socket.onmessage = (event) => {
+            try {
+                // Only drive the standings via WebSocket when no lap is selected yet
+                if (lapSelect.value) return;
+                const positions = JSON.parse(event.data);
+                if (Array.isArray(positions) && positions.length > 0) renderStandingsRows(positions);
+            } catch (e) {
+                console.warn('Live standings parse error', e);
+            }
+        };
+    } catch (e) {
+        console.warn('Standings websocket unavailable', e);
+    }
+}
+
+function populateStandings(drivers) {
+    if (!standingsList || !drivers || drivers.length === 0) return;
+    const positions = drivers.map((d, i) => ({
+        position: i + 1,
+        driver: d.name || d.code,
+        code: d.code,
+        team: d.team,
+        gap: null
+    }));
+    renderStandingsRows(positions);
 }
 
 // Set up event listeners
@@ -293,6 +400,9 @@ function setupEventListeners() {
             const races = await F1DashAPI.getRaces(seasonSelect.value);
             debug("Races loaded", races);
             
+            // Sort races chronologically by round number
+            races.sort((a, b) => a.round - b.round);
+
             // Populate race select
             races.forEach(race => {
                 const option = document.createElement('option');
@@ -394,11 +504,14 @@ function setupEventListeners() {
             
             // Enable compare driver select
             compareDriverSelect.disabled = false;
-            
+
             // Unlock comparison card
             const compCard = document.getElementById('comparison-driver-card');
             if (compCard) compCard.classList.remove('locked');
-            
+
+            // Populate standings from session drivers
+            populateStandings(drivers);
+
             setStatus('Ready', false);
         } catch (error) {
             console.error('Failed to load drivers:', error);
@@ -429,25 +542,14 @@ function setupEventListeners() {
                 throw new Error('No laps found for this driver');
             }
             
-            // Populate lap select with more detailed information
+            // Populate lap select — just lap numbers
             laps.forEach(lap => {
                 const option = document.createElement('option');
                 option.value = lap.lap;
-                
-                // Create more detailed lap info with sector times if available
-                let lapInfo = `Lap ${lap.lap} - ${lap.time}`;
-                
-                // Add sector times if available
-                if (lap.sector1 && lap.sector2 && lap.sector3) {
-                    lapInfo += ` (S1: ${lap.sector1}, S2: ${lap.sector2}, S3: ${lap.sector3})`;
-                }
-                
-                // Add compound info if available
-                if (lap.compound) {
-                    lapInfo += ` [${lap.compound}]`;
-                }
-                
-                option.textContent = lapInfo;
+                option.textContent = `Lap ${lap.lap}`;
+                option.dataset.s1 = lap.sector1 || '';
+                option.dataset.s2 = lap.sector2 || '';
+                option.dataset.s3 = lap.sector3 || '';
                 lapSelect.appendChild(option);
             });
             
@@ -470,83 +572,33 @@ function setupEventListeners() {
     });
     
     // Lap select
-    lapSelect.addEventListener('change', () => {
+    lapSelect.addEventListener('change', async () => {
         loadButton.disabled = !lapSelect.value;
+        if (!lapSelect.value) return;
+        await refreshStandings();
     });
     
     // Compare driver select
-    compareDriverSelect.addEventListener('change', async () => {
-        debug("Compare driver changed", compareDriverSelect.value);
-        compareLapSelect.innerHTML = '<option value="">Select Lap</option>';
-        compareLapSelect.disabled = true;
-        
+    compareDriverSelect.addEventListener('change', () => {
         if (!compareDriverSelect.value) {
+            updateDriverCard('compare', null);
             return;
         }
-        
-        try {
-            setStatus(`Loading laps for ${compareDriverSelect.value}...`, true);
-            
-            // Disable comparison dropdown if same driver is selected
-            if (compareDriverSelect.value === driverSelect.value) {
-                alert("Please select a different driver for comparison");
-                compareDriverSelect.value = "";
-                setStatus('Ready', false);
-                return;
-            }
-            
-            // Load laps for selected comparison driver
-            const laps = await F1DashAPI.getLaps(
-                seasonSelect.value, 
-                raceSelect.value, 
-                sessionSelect.value, 
-                compareDriverSelect.value
-            );
-            
-            debug("Laps loaded for comparison driver", { driver: compareDriverSelect.value, laps });
-            
-            if (!laps || laps.length === 0) {
-                throw new Error('No laps found for this driver');
-            }
-            
-            // Populate lap select with more detailed information
-            laps.forEach(lap => {
-                const option = document.createElement('option');
-                option.value = lap.lap;
-                
-                // Create more detailed lap info with sector times if available
-                let lapInfo = `Lap ${lap.lap} - ${lap.time}`;
-                
-                // Add sector times if available
-                if (lap.sector1 && lap.sector2 && lap.sector3) {
-                    lapInfo += ` (S1: ${lap.sector1}, S2: ${lap.sector2}, S3: ${lap.sector3})`;
-                }
-                
-                // Add compound info if available
-                if (lap.compound) {
-                    lapInfo += ` [${lap.compound}]`;
-                }
-                
-                option.textContent = lapInfo;
-                compareLapSelect.appendChild(option);
-            });
-            
-            // Enable lap select
-            compareLapSelect.disabled = false;
-            
-            const selectedOption = compareDriverSelect.options[compareDriverSelect.selectedIndex];
-            updateDriverCard('compare', {
-                code: compareDriverSelect.value,
-                name: selectedOption.dataset.name,
-                team: selectedOption.dataset.team,
-                color: selectedOption.dataset.color
-            });
-            
-            setStatus('Ready', false);
-        } catch (error) {
-            console.error(`Failed to load laps for ${compareDriverSelect.value}:`, error);
-            setStatus(`Error: ${error.message}`, false);
+
+        // Prevent selecting the same driver
+        if (compareDriverSelect.value === driverSelect.value) {
+            alert("Please select a different driver for comparison");
+            compareDriverSelect.value = "";
+            return;
         }
+
+        const selectedOption = compareDriverSelect.options[compareDriverSelect.selectedIndex];
+        updateDriverCard('compare', {
+            code: compareDriverSelect.value,
+            name: selectedOption.dataset.name,
+            team: selectedOption.dataset.team,
+            color: selectedOption.dataset.color
+        });
     });
     
     // Load button
@@ -562,7 +614,7 @@ function setupEventListeners() {
             // Get selected driver's team and color
             const driverOption = driverSelect.options[driverSelect.selectedIndex];
             const driverTeam = driverOption.dataset.team;
-            const driverColor = driverOption.dataset.color;
+            const driverColor = driverOption.dataset.color || getTeamColor(driverTeam);
             
             debug("Selected driver info", {
                 code: driverSelect.value,
@@ -598,20 +650,19 @@ function setupEventListeners() {
             
             debug("Telemetry loaded points", telemetry.length);
             
-            // If comparison driver and lap are selected, load comparison data
-            if (compareDriverSelect.value && compareLapSelect.value) {
+            // If comparison driver is selected, use the same lap for both
+            if (compareDriverSelect.value) {
                 debug("Starting comparison mode", {
                     driver1: driverSelect.value,
-                    lap1: lapSelect.value,
-                    driver2: compareDriverSelect.value,
-                    lap2: compareLapSelect.value
+                    lap: lapSelect.value,
+                    driver2: compareDriverSelect.value
                 });
                 
                 // Get comparison driver's team and color
                 const compareDriverOption = compareDriverSelect.options[compareDriverSelect.selectedIndex];
                 const compareDriverTeam = compareDriverOption.dataset.team || 
                     extractTeamName(compareDriverOption.textContent);
-                const compareDriverColor = compareDriverOption.dataset.color;
+                const compareDriverColor = compareDriverOption.dataset.color || getTeamColor(compareDriverTeam);
                 
                 debug("Comparison driver info", {
                     code: compareDriverSelect.value,
@@ -628,7 +679,7 @@ function setupEventListeners() {
                         driverSelect.value,
                         lapSelect.value,
                         compareDriverSelect.value,
-                        compareLapSelect.value
+                        lapSelect.value
                     );
                     
                     debug("Comparison data loaded", {
@@ -637,20 +688,28 @@ function setupEventListeners() {
                         delta: comparisonData.delta
                     });
                     
-                    // Ensure we have team colors if API doesn't return them
-                    if (!comparisonData.driver1.color || comparisonData.driver1.color === "#FF0000") {
-                        comparisonData.driver1.color = driverColor;
-                    }
-                    
-                    if (!comparisonData.driver2.color || comparisonData.driver2.color === "#0000FF") {
-                        comparisonData.driver2.color = compareDriverColor;
-                    }
-                    
-                    // Update track visualization with comparison data
+                    // Use dropdown colors as fallback only — backend colors take priority
+                    if (!comparisonData.driver1.color) comparisonData.driver1.color = driverColor || '#e10600';
+                    if (!comparisonData.driver2.color) comparisonData.driver2.color = compareDriverColor || '#3671C6';
+
+                    // Sector times come from the backend (already in comparisonData.driver1.sectors / .driver2.sectors)
+                    // Do NOT overwrite them here — the backend computes them from FastF1 laps directly.
+
+                    // Update track visualization — setComparisonData will also inject
+                    // comparisonData.sector_boundaries into the track if present.
                     trackVisualizer.setComparisonData(comparisonData);
-                    
+
+                    // Update the HTML track legend
+                    updateTrackLegend(
+                        { code: comparisonData.driver1.code, color: comparisonData.driver1.color, team: comparisonData.driver1.team },
+                        { code: comparisonData.driver2.code, color: comparisonData.driver2.color, team: comparisonData.driver2.team }
+                    );
+
                     // Render comparison charts
                     renderComparisonCharts(comparisonData);
+
+                    // Update the right-panel comparison meta card
+                    updateComparisonMeta(comparisonData);
 
                     const avg = (values) => values.reduce((sum, v) => sum + v, 0) / (values.length || 1);
                     const avgSpeed1 = avg(comparisonData.driver1.data.speed);
@@ -676,6 +735,10 @@ function setupEventListeners() {
                 // Render single driver charts with appropriate color
                 renderCharts(telemetry, driverSelect.value, driverColor);
                 trackVisualizer.setSingleDriverColor(driverColor);
+                updateTrackLegend(
+                    { code: driverSelect.value, color: driverColor, team: driverTeam },
+                    null
+                );
                 
                 const avgSpeed = telemetry.reduce((sum, point) => sum + point.speed, 0) / (telemetry.length || 1);
                 const maxSpeed = Math.max(...telemetry.map(point => point.speed));
@@ -687,6 +750,9 @@ function setupEventListeners() {
 
                 setStatus('Telemetry data loaded', false);
             }
+
+            // Always refresh standings after loading data
+            refreshStandings();
         } catch (error) {
             console.error('Failed to load data:', error);
             setStatus(`Error: ${error.message}`, false);
@@ -727,15 +793,7 @@ function resetSelects(changedSelect) {
     if (changedSelect === 'lap' || changedSelect === 'all') {
         lapSelect.innerHTML = '<option value="">Select Lap</option>';
         lapSelect.disabled = true;
-        compareLapSelect.innerHTML = '<option value="">Select Lap</option>';
-        compareLapSelect.disabled = true;
         loadButton.disabled = true;
-    }
-    
-    // Remove any comparison info that might be displayed
-    const existingComparison = document.querySelector('.comparison-info');
-    if (existingComparison) {
-        existingComparison.remove();
     }
     
     // Clear charts
@@ -933,52 +991,6 @@ function renderComparisonCharts(comparisonData) {
     speedChartContainer.innerHTML = '<canvas></canvas>';
     throttleBrakeChartContainer.innerHTML = '<canvas></canvas>';
     gearChartContainer.innerHTML = '<canvas></canvas>';
-    
-    // Remove any existing comparison info
-    const existingComparison = document.querySelector('.comparison-info');
-    if (existingComparison) {
-        existingComparison.remove();
-    }
-    
-    // Add comparison info above the charts
-    const comparisonInfoDiv = document.createElement('div');
-    comparisonInfoDiv.className = 'comparison-info';
-    
-    // Add driver 1 info
-    const driver1InfoDiv = document.createElement('div');
-    driver1InfoDiv.className = 'driver-info';
-    const driver1ColorIndicator = document.createElement('div');
-    driver1ColorIndicator.className = 'color-indicator';
-    driver1ColorIndicator.style.backgroundColor = driver1.color;
-    driver1InfoDiv.appendChild(driver1ColorIndicator);
-    driver1InfoDiv.innerHTML += `<span>${driver1.code} - Lap ${driver1.lap} (${driver1.lapTime})</span>`;
-    comparisonInfoDiv.appendChild(driver1InfoDiv);
-    
-    // Add delta info
-    const deltaValue = delta.time;
-    const deltaInfoDiv = document.createElement('div');
-    deltaInfoDiv.className = 'delta';
-    const deltaFormatted = Math.abs(deltaValue).toFixed(3);
-    if (deltaValue < 0) {
-        deltaInfoDiv.innerHTML = `<span class="delta-negative">${driver1.code} faster by ${deltaFormatted}s</span>`;
-    } else {
-        deltaInfoDiv.innerHTML = `<span class="delta-positive">${driver2.code} faster by ${deltaFormatted}s</span>`;
-    }
-    comparisonInfoDiv.appendChild(deltaInfoDiv);
-    
-    // Add driver 2 info
-    const driver2InfoDiv = document.createElement('div');
-    driver2InfoDiv.className = 'driver-info';
-    const driver2ColorIndicator = document.createElement('div');
-    driver2ColorIndicator.className = 'color-indicator';
-    driver2ColorIndicator.style.backgroundColor = driver2.color;
-    driver2InfoDiv.appendChild(driver2ColorIndicator);
-    driver2InfoDiv.innerHTML += `<span>${driver2.code} - Lap ${driver2.lap} (${driver2.lapTime})</span>`;
-    comparisonInfoDiv.appendChild(driver2InfoDiv);
-    
-    // Insert comparison info before the first chart
-    const chartsEl = document.querySelector('.charts-container') || speedChartContainer.parentElement;
-    if (chartsEl) chartsEl.insertBefore(comparisonInfoDiv, speedChartContainer);
     
     // Prepare comparison data
     const timeLabels = driver1.data.time.map(t => {

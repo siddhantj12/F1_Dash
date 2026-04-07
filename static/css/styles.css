@@ -673,7 +673,7 @@ select, input { font-family: var(--font-body); }
 
 .track-canvas-container {
   width: 100%;
-  height: 220px;
+  height: 340px;
   position: relative;
   border-radius: var(--r-sm);
   overflow: hidden;
@@ -685,6 +685,44 @@ select, input { font-family: var(--font-body); }
 }
 
 /* Insight Chips */
+.track-legend {
+  display: none;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 14px;
+  margin-top: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--r-sm);
+}
+.track-legend.visible { display: flex; }
+.track-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.track-legend .legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.track-legend .legend-number {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.track-legend .legend-code {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.track-legend .legend-team {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .insight-chips {
   display: flex;
   gap: 8px;
@@ -726,14 +764,14 @@ select, input { font-family: var(--font-body); }
   gap: 12px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .chart-card {
-  flex: 1;
   padding: 14px 18px;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 220px;
 }
 .chart-card-header {
   display: flex;
@@ -766,7 +804,11 @@ select, input { font-family: var(--font-body); }
 .chart-wrapper {
   flex: 1;
   position: relative;
-  min-height: 60px;
+  min-height: 160px;
+}
+.chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* RIGHT PANEL */
@@ -792,16 +834,6 @@ select, input { font-family: var(--font-body); }
 .standings-title {
   font-size: 15px;
   font-weight: 700;
-}
-.standings-badge {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--red-bright);
-  background: var(--red-dim);
-  border-radius: var(--r-pill);
-  padding: 3px 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .standing-row {
@@ -1112,5 +1144,5 @@ select, input { font-family: var(--font-body); }
   .nav-toggle { display: block; }
   .telemetry-layout { grid-template-columns: 1fr; }
   .control-panel, .right-panel { width: 100%; }
-  .track-canvas-container { height: 160px; }
+  .track-canvas-container { height: 240px; }
 }

@@ -143,9 +143,6 @@
                   <select id="driver-select" class="glass-select" disabled aria-label="Select primary driver">
                     <option value="">Driver</option>
                   </select>
-                  <select id="lap-select" class="glass-select" disabled aria-label="Select lap">
-                    <option value="">Lap</option>
-                  </select>
                 </div>
               </div>
 
@@ -153,7 +150,7 @@
               <div class="driver-card comparison locked" id="comparison-driver-card">
                 <div class="card-label">Comparison Driver</div>
                 <div class="driver-profile">
-                  <div class="driver-num" style="color: var(--ferrari); text-shadow: 0 0 20px rgba(249,21,54,0.6);">16</div>
+                  <div class="driver-num" id="compare-driver-number" style="color: var(--ferrari); text-shadow: 0 0 20px rgba(249,21,54,0.6);">16</div>
                   <div class="driver-img" id="compare-driver-avatar">LEC</div>
                   <div class="driver-info">
                     <div class="driver-name-text" id="compare-driver-name">Optional</div>
@@ -167,11 +164,13 @@
                   <select id="compare-driver-select" class="glass-select" disabled aria-label="Select comparison driver">
                     <option value="">Compare with Driver (optional)</option>
                   </select>
-                  <select id="compare-lap-select" class="glass-select" disabled aria-label="Select comparison lap">
-                    <option value="">Select Lap</option>
-                  </select>
                 </div>
               </div>
+
+              <!-- SHARED LAP SELECT -->
+              <select id="lap-select" class="glass-select" disabled aria-label="Select lap">
+                <option value="">Lap</option>
+              </select>
 
               <!-- LOAD BUTTON -->
               <button id="load-data" class="btn-primary huge-cta" disabled aria-label="Load telemetry data">
@@ -203,6 +202,8 @@
                 <div class="track-canvas-container">
                   <div id="track-chart" style="width:100%;height:100%;"></div>
                 </div>
+
+                <div id="track-legend" class="track-legend"></div>
 
                 <div class="insight-chips">
                   <div class="chip" id="insight-1">Select a session to surface insights.</div>
@@ -241,58 +242,8 @@
               <div class="glass-card standings-card">
                 <div class="standings-header">
                   <h2 class="standings-title">Race Standings</h2>
-                  <span class="standings-badge">LIVE</span>
                 </div>
                 <div id="standings-list">
-                  <!-- Populated by JS -->
-                  <div class="standing-row">
-                    <span class="standing-position top3">1</span>
-                    <span class="team-stripe" style="background:var(--redbull)"></span>
-                    <span class="standing-name">Verstappen</span>
-                    <span class="standing-gap leader">LEAD</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position top3">2</span>
-                    <span class="team-stripe" style="background:var(--ferrari)"></span>
-                    <span class="standing-name">Leclerc</span>
-                    <span class="standing-gap">+0.000</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position top3">3</span>
-                    <span class="team-stripe" style="background:var(--mclaren)"></span>
-                    <span class="standing-name">Norris</span>
-                    <span class="standing-gap">+0.336</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position">4</span>
-                    <span class="team-stripe" style="background:var(--aston)"></span>
-                    <span class="standing-name">Alonso</span>
-                    <span class="standing-gap">+0.824</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position">5</span>
-                    <span class="team-stripe" style="background:var(--mercedes)"></span>
-                    <span class="standing-name">Russell</span>
-                    <span class="standing-gap">+1.638</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position">6</span>
-                    <span class="team-stripe" style="background:var(--ferrari)"></span>
-                    <span class="standing-name">Sainz</span>
-                    <span class="standing-gap">+1.833</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position">7</span>
-                    <span class="team-stripe" style="background:var(--mclaren)"></span>
-                    <span class="standing-name">Piastri</span>
-                    <span class="standing-gap">+2.000</span>
-                  </div>
-                  <div class="standing-row">
-                    <span class="standing-position">8</span>
-                    <span class="team-stripe" style="background:var(--mercedes)"></span>
-                    <span class="standing-name">Hamilton</span>
-                    <span class="standing-gap">+2.607</span>
-                  </div>
                 </div>
               </div>
 
@@ -317,7 +268,7 @@
               </div>
 
               <!-- Gear chart -->
-              <div class="glass-card chart-card" style="min-height:120px;">
+              <div class="glass-card chart-card" style="min-height:220px;">
                 <div class="chart-card-header">
                   <span class="chart-title"><i class="fa-solid fa-gears" style="margin-right:6px;color:var(--red);opacity:0.7;"></i>Gear</span>
                 </div>
@@ -420,8 +371,6 @@
     </main>
   </div><!-- .app-container -->
 
-  <!-- Debug panel (hidden by default) -->
-  <div id="debug-info" style="display:none;position:fixed;bottom:0;right:0;width:380px;max-height:280px;overflow:auto;background:rgba(5,5,7,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:12px 0 0 0;padding:12px;font-size:11px;font-family:monospace;z-index:9999;color:#a0ffa0;"></div>
 
   <!-- Scripts -->
   <script type="module" src="/static/js/supabase.js"></script>

@@ -84,16 +84,16 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of sessions for the race
      */
     getSessions: async (year, round) => {
-        // First get the race ID
-        const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
-        if (raceResponse.error || !raceResponse.data) return [];
-        
-        return await apiFetch(`/sessions/${year}/${round}`, null, { 
-            table: 'sessions', 
-            select: 'type', 
-            filter: { race_id: raceResponse.data.id },
-            mapFn: d => d.type
-        });
+        try {
+            const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
+            if (!raceResponse.error && raceResponse.data) {
+                const { data, error } = await supabase.from('sessions').select('type').eq('race_id', raceResponse.data.id);
+                if (!error && data && data.length > 0) return data.map(d => d.type);
+            }
+        } catch (e) {
+            console.warn('[Supabase] Sessions lookup failed, falling back:', e.message);
+        }
+        return await apiFetch(`/sessions/${year}/${round}`);
     },
 
     /**
@@ -126,25 +126,21 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of laps for the driver
      */
     getLaps: async (year, round, session, driver) => {
-        // Get session ID first
-        const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
-        if (raceResponse.error) return [];
-        const sessionResponse = await supabase.from('sessions').select('id').eq('race_id', raceResponse.data.id).eq('type', session).single();
-        if (sessionResponse.error) return [];
-
-        return await apiFetch(`/laps/${year}/${round}/${session}/${driver}`, null, { 
-            table: 'laps', 
-            select: 'lap_number, lap_time, sector1, sector2, sector3, compound', 
-            filter: { session_id: sessionResponse.data.id, driver_code: driver },
-            mapFn: d => ({ 
-                lap: d.lap_number, 
-                time: d.lap_time, 
-                sector1: d.sector1, 
-                sector2: d.sector2, 
-                sector3: d.sector3, 
-                compound: d.compound 
-            })
-        });
+        try {
+            const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
+            if (!raceResponse.error && raceResponse.data) {
+                const sessionResponse = await supabase.from('sessions').select('id').eq('race_id', raceResponse.data.id).eq('type', session).single();
+                if (!sessionResponse.error && sessionResponse.data) {
+                    const { data, error } = await supabase.from('laps').select('lap_number, lap_time, sector1, sector2, sector3, compound').eq('session_id', sessionResponse.data.id).eq('driver_code', driver);
+                    if (!error && data && data.length > 0) {
+                        return data.map(d => ({ lap: d.lap_number, time: d.lap_time, sector1: d.sector1, sector2: d.sector2, sector3: d.sector3, compound: d.compound }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[Supabase] Laps lookup failed, falling back:', e.message);
+        }
+        return await apiFetch(`/laps/${year}/${round}/${session}/${driver}`);
     },
 
     /**
@@ -157,33 +153,24 @@ const F1DashAPI = {
      * @returns {Promise<Object>} Telemetry data for the lap
      */
     getTelemetry: async (year, round, session, driver, lap) => {
-        // Get lap ID first
         try {
-            const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
-            if (raceResponse.error) throw raceResponse.error;
-            const sessionResponse = await supabase.from('sessions').select('id').eq('race_id', raceResponse.data.id).eq('type', session).single();
-            if (sessionResponse.error) throw sessionResponse.error;
-            const lapResponse = await supabase.from('laps').select('id').eq('session_id', sessionResponse.data.id).eq('driver_code', driver).eq('lap_number', lap).single();
-            if (lapResponse.error) throw lapResponse.error;
-
-            return await apiFetch(`/telemetry/${year}/${round}/${session}/${driver}/${lap}`, null, { 
-                table: 'telemetry', 
-                select: 'timestamp, speed, throttle, brake, gear, x, y', 
-                filter: { lap_id: lapResponse.data.id },
-                mapFn: d => ({ 
-                    time: d.timestamp, 
-                    speed: d.speed, 
-                    throttle: d.throttle, 
-                    brake: d.brake, 
-                    gear: d.gear, 
-                    x: d.x, 
-                    y: d.y 
-                })
-            });
+            const raceRes = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
+            if (!raceRes.error && raceRes.data) {
+                const sessRes = await supabase.from('sessions').select('id').eq('race_id', raceRes.data.id).eq('type', session).single();
+                if (!sessRes.error && sessRes.data) {
+                    const lapRes = await supabase.from('laps').select('id').eq('session_id', sessRes.data.id).eq('driver_code', driver).eq('lap_number', lap).single();
+                    if (!lapRes.error && lapRes.data) {
+                        const { data, error } = await supabase.from('telemetry').select('timestamp, speed, throttle, brake, gear, x, y').eq('lap_id', lapRes.data.id);
+                        if (!error && data && data.length > 0) {
+                            return data.map(d => ({ time: d.timestamp, speed: d.speed, throttle: d.throttle, brake: d.brake, gear: d.gear, x: d.x, y: d.y }));
+                        }
+                    }
+                }
+            }
         } catch (e) {
-            console.warn(`[Supabase] Telemetry lookup failed, falling back to backend: ${e.message}`);
-            return await apiFetch(`/telemetry/${year}/${round}/${session}/${driver}/${lap}`);
+            console.warn(`[Supabase] Telemetry lookup failed, falling back: ${e.message}`);
         }
+        return await apiFetch(`/telemetry/${year}/${round}/${session}/${driver}/${lap}`);
     },
 
     /**
@@ -207,6 +194,18 @@ const F1DashAPI = {
      * @param {number} round - Race round
      * @returns {Promise<Object>} Track coordinates and sector boundaries
      */
+    /**
+     * Get standings at a specific lap in a session
+     * @param {number} year - Season year
+     * @param {number} round - Race round
+     * @param {string} session - Session name
+     * @param {number} lap - Lap number
+     * @returns {Promise<Array>} Standings at that lap
+     */
+    getStandings: async (year, round, session, lap) => {
+        return await apiFetch(`/standings/${year}/${round}/${session}/${lap}`);
+    },
+
     getTrackData: async (year, round) => {
         // Try Supabase first (returns a single track layout per year+round)
         const { data, error } = await supabase
