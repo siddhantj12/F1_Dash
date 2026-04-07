@@ -35,7 +35,9 @@ async def get_races(year: int):
         result = supabase.rpc("rpc_get_races", {"p_year": year}).execute()
 
         if result.data:
-            return JSONResponse(content=result.data)
+            # Ensure races are sorted in chronological order
+            sorted_data = sorted(result.data, key=lambda x: x.get("round", 0))
+            return JSONResponse(content=sorted_data)
 
         # Fallback to FastF1
         logging.info(f"Supabase returned no races for {year}, falling back to FastF1")

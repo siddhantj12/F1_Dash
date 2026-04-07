@@ -221,8 +221,8 @@ class TrackVisualizer {
         const { coordinates, sector_boundaries, circuit_name } = this.trackData;
         
         // Draw track title
-        ctx.font = 'bold 16px Arial';
-        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Inter, Arial';
+        ctx.fillStyle = '#90909880';
         ctx.textAlign = 'center';
         ctx.fillText(circuit_name, canvas.width / 2, 25);
         
@@ -239,7 +239,7 @@ class TrackVisualizer {
         const maxY = Math.max(...coordinates.y);
         
         // Calculate scale factors with padding
-        const padding = 40; // Increased padding
+        const padding = 60; // More padding so track spreads across canvas
         const scaleX = (canvas.width - 2 * padding) / (maxX - minX || 1);
         const scaleY = (canvas.height - 2 * padding) / (maxY - minY || 1);
         const scale = Math.min(scaleX, scaleY);
@@ -308,8 +308,8 @@ class TrackVisualizer {
         
         // Draw track as a single path first (base layer)
         ctx.beginPath();
-        ctx.strokeStyle = '#333333';
-        ctx.lineWidth = 10; // Thicker for background
+        ctx.strokeStyle = '#222222';
+        ctx.lineWidth = 5; // Thin background track
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
@@ -341,7 +341,7 @@ class TrackVisualizer {
             sectorStrokeColor = this.singleDriverColor; // Use single driver color for all sectors
         }
         ctx.strokeStyle = sectorStrokeColor;
-            ctx.lineWidth = 8;
+            ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
@@ -386,17 +386,17 @@ class TrackVisualizer {
         }
         
         // Draw sector markers
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#ffffff';
+        ctx.font = '11px Inter, Arial';
+        ctx.fillStyle = '#909098';
         ctx.textAlign = 'center';
         
         sectorPoints.forEach((point, index) => {
             if (index > 0) { // Skip start/finish point for sector markers
                 ctx.beginPath();
-                ctx.arc(point.x, point.y, 8, 0, Math.PI * 2);
+                ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
                 ctx.fill();
                 
-                ctx.fillText(`S${point.sector}`, point.x, point.y - 10);
+                ctx.fillText(`S${point.sector}`, point.x, point.y - 8);
             }
         });
         
@@ -405,9 +405,9 @@ class TrackVisualizer {
         const startY = sectorPoints[0].y;
         ctx.beginPath();
         ctx.fillStyle = '#ffffff';
-        ctx.arc(startX, startY, 8, 0, Math.PI * 2);
+        ctx.arc(startX, startY, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillText('Start/Finish', startX, startY - 10);
+        ctx.fillText('Start/Finish', startX, startY - 8);
         
         // Draw legend if comparison data exists
         if (this.comparisonData) {

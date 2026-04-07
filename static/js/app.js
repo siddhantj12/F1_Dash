@@ -94,6 +94,16 @@ let speedComparisonChart = null;
 let throttleBrakeComparisonChart = null;
 let gearComparisonChart = null;
 
+// ─── Chart.js Dark Theme Defaults ──────────────────────────────────────────
+Chart.defaults.color = '#909098';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.display = false;
+Chart.defaults.elements.line.borderWidth = 1.5;
+Chart.defaults.elements.point.radius = 0;
+Chart.defaults.animation.duration = 600;
+
 // Initialize the application
 async function initApp() {
     try {
@@ -199,6 +209,7 @@ function setupStandings() {
         socket = new WebSocket(wsUrl);
     } catch (error) {
         console.warn('Standings websocket failed to start', error);
+        loadStandingsFromREST();
         return;
     }
 
@@ -206,41 +217,64 @@ function setupStandings() {
         try {
             const positions = JSON.parse(event.data);
             if (!Array.isArray(positions) || positions.length === 0) return;
-            standingsList.innerHTML = '';
-            positions
-                .sort((a, b) => a.position - b.position)
-                .slice(0, 8)
-                .forEach((item) => {
-                    const row = document.createElement('div');
-                    row.className = 'standing-row';
-                    const gap = item.gap === null || item.gap === undefined ? '—' : `+${item.gap.toFixed(3)}`;
-                    row.innerHTML = `
-                        <div class="standing-driver">
-                            <span class="standing-position">${item.position}</span>
-                            <span>${item.driver}</span>
-                        </div>
-                        <span class="driver-meta">${gap}</span>
-                    `;
-                    standingsList.appendChild(row);
-                });
+            renderStandingsRows(positions);
         } catch (error) {
             console.error('Failed to parse standings data', error);
         }
     };
 
     socket.onerror = () => {
-        if (standingsList) {
-            standingsList.innerHTML = `
-                <div class="standing-row">
-                    <div class="standing-driver">
-                        <span class="standing-position">—</span>
-                        <span>Standings unavailable</span>
-                    </div>
-                    <span class="driver-meta">—</span>
-                </div>
-            `;
-        }
+        loadStandingsFromREST();
     };
+
+    socket.onclose = () => {
+        loadStandingsFromREST();
+    };
+}
+
+async function loadStandingsFromREST() {
+    if (!standingsList) return;
+    try {
+        const resp = await axios.get('/api/positions');
+        if (resp.data && Array.isArray(resp.data) && resp.data.length > 0) {
+            renderStandingsRows(resp.data);
+        }
+    } catch {
+        // Keep the static placeholder rows from index.html
+    }
+}
+
+function renderStandingsRows(positions) {
+    const teamColorMap = {
+        'Red Bull Racing': '#3671C6', 'Red Bull': '#3671C6',
+        'Ferrari': '#F91536', 'Scuderia Ferrari': '#F91536',
+        'Mercedes': '#6CD3BF', 'McLaren': '#FF8000',
+        'Aston Martin': '#358C75', 'Alpine': '#FF87BC',
+        'AlphaTauri': '#5E8FAA', 'RB': '#5E8FAA',
+        'Haas F1 Team': '#B6BABD', 'Haas': '#B6BABD',
+        'Williams': '#64C4FF', 'Alfa Romeo': '#C92D4B',
+        'Kick Sauber': '#00CF46',
+    };
+    standingsList.innerHTML = '';
+    positions
+        .sort((a, b) => a.position - b.position)
+        .slice(0, 8)
+        .forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'standing-row';
+            const gap = item.position === 1 ? 'LEAD'
+                : (item.gap === null || item.gap === undefined ? '—' : `+${Number(item.gap).toFixed(3)}`);
+            const gapClass = item.position === 1 ? 'standing-gap leader' : 'standing-gap';
+            const posClass = item.position <= 3 ? 'standing-position top3' : 'standing-position';
+            const color = teamColorMap[item.team] || '#B6BABD';
+            row.innerHTML = `
+                <span class="${posClass}">${item.position}</span>
+                <span class="team-stripe" style="background:${color}"></span>
+                <span class="standing-name">${item.driver || item.code || '—'}</span>
+                <span class="${gapClass}">${gap}</span>
+            `;
+            standingsList.appendChild(row);
+        });
 }
 
 // Set up event listeners
@@ -360,6 +394,10 @@ function setupEventListeners() {
             
             // Enable compare driver select
             compareDriverSelect.disabled = false;
+            
+            // Unlock comparison card
+            const compCard = document.getElementById('comparison-driver-card');
+            if (compCard) compCard.classList.remove('locked');
             
             setStatus('Ready', false);
         } catch (error) {
@@ -544,6 +582,11 @@ function setupEventListeners() {
                 trackTitle.textContent = trackVisualizer.trackData.circuit_name || 'Track + Telemetry';
             }
             
+            // Show loading state in chart containers
+            speedChartContainer.innerHTML = '<div class="loading-placeholder">Processing telemetry... (may take ~15s if no DB index)</div>';
+            throttleBrakeChartContainer.innerHTML = '<div class="loading-placeholder">Processing throttle/brake...</div>';
+            gearChartContainer.innerHTML = '<div class="loading-placeholder">Processing gear shifts...</div>';
+
             // Load telemetry data for primary driver
             const telemetry = await F1DashAPI.getTelemetry(
                 seasonSelect.value,
@@ -719,9 +762,9 @@ function clearCharts() {
         gearChart = null;
     }
     
-    speedChartContainer.innerHTML = '<div class="loading">Select data to display speed chart</div>';
-    throttleBrakeChartContainer.innerHTML = '<div class="loading">Select data to display throttle/brake chart</div>';
-    gearChartContainer.innerHTML = '<div class="loading">Select data to display gear chart</div>';
+    speedChartContainer.innerHTML = '<div class="loading-placeholder">Select data to display speed chart</div>';
+    throttleBrakeChartContainer.innerHTML = '<div class="loading-placeholder">Select data to display throttle/brake chart</div>';
+    gearChartContainer.innerHTML = '<div class="loading-placeholder">Gear data</div>';
 }
 
 // Render charts with telemetry data
@@ -731,8 +774,11 @@ function renderCharts(telemetry, driverCode, driverColor) {
     
     debug("Rendering single driver charts", {driverCode, driverColor});
     
-    // Format telemetry data for charts
-    const labels = telemetry.map(data => data.time.toFixed(1));
+    // Format telemetry data for charts (ensure time is a float)
+    const labels = telemetry.map(data => {
+        const t = parseFloat(data.time);
+        return isNaN(t) ? '0' : t.toFixed(1);
+    });
     const speedData = telemetry.map(data => data.speed);
     const throttleData = telemetry.map(data => data.throttle);
     const brakeData = telemetry.map(data => data.brake);
@@ -931,10 +977,14 @@ function renderComparisonCharts(comparisonData) {
     comparisonInfoDiv.appendChild(driver2InfoDiv);
     
     // Insert comparison info before the first chart
-    document.querySelector('.charts').insertBefore(comparisonInfoDiv, speedChartContainer);
+    const chartsEl = document.querySelector('.charts-container') || speedChartContainer.parentElement;
+    if (chartsEl) chartsEl.insertBefore(comparisonInfoDiv, speedChartContainer);
     
     // Prepare comparison data
-    const timeLabels = driver1.data.time.map(t => parseFloat(t).toFixed(1));
+    const timeLabels = driver1.data.time.map(t => {
+        const v = parseFloat(t);
+        return isNaN(v) ? '0' : v.toFixed(1);
+    });
     
     // Speed comparison chart
     speedComparisonChart = new Chart(speedChartContainer.querySelector('canvas'), {

@@ -14,13 +14,16 @@ async def get_laps(year: int, round: int, session: str, driver: str):
     """Get all laps for a specific driver in a session"""
     try:
         # Try Supabase RPC first
-        result = supabase.rpc(
-            "rpc_get_driver_laps",
-            {"p_year": year, "p_round": round, "p_session": session, "p_driver_code": driver}
-        ).execute()
+        try:
+            result = supabase.rpc(
+                "rpc_get_driver_laps",
+                {"p_year": year, "p_round": round, "p_session": session, "p_driver_code": driver}
+            ).execute()
 
-        if result.data:
-            return result.data
+            if result.data:
+                return result.data
+        except Exception as e:
+            logger.warning(f"Supabase get_laps failed or timed out: {str(e)}. Falling back to FastF1.")
 
         # Fallback to FastF1 if Supabase returns empty
         logger.info(f"Supabase returned no laps for {driver}, falling back to FastF1")
@@ -67,14 +70,17 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
 
     try:
         # Try Supabase RPC first
-        result = supabase.rpc(
-            "rpc_get_lap_telemetry",
-            {"p_year": year, "p_round": round, "p_session": session, "p_driver_code": driver, "p_lap": lap}
-        ).execute()
+        try:
+            result = supabase.rpc(
+                "rpc_get_lap_telemetry",
+                {"p_year": year, "p_round": round, "p_session": session, "p_driver_code": driver, "p_lap": lap}
+            ).execute()
 
-        if result.data:
-            await cache.set(cache_key, result.data)
-            return result.data
+            if result.data:
+                await cache.set(cache_key, result.data)
+                return result.data
+        except Exception as e:
+            logger.warning(f"Supabase get_telemetry failed or timed out: {str(e)}. Falling back to FastF1.")
 
         # Fallback to FastF1 if Supabase returns empty
         logger.info(f"Supabase returned no telemetry for {driver} lap {lap}, falling back to FastF1")
