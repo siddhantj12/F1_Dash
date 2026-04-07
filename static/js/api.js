@@ -1,20 +1,56 @@
-/**
- * F1 Dash API Client
- * Handles all API calls to the FastAPI backend
- */
+import { supabase } from './supabase.js'
 
-// Axios is now loaded globally via CDN in index.html
+const API_BASE_URL = '/api';
 
-const API_BASE_URL = '/api'; // Replaced process.env.NEXT_PUBLIC_API_URL
+// Team colors — single source of truth for both api.js and app.js
+const TEAM_COLORS = {
+    'Red Bull Racing':     '#3671C6',
+    'Red Bull':            '#3671C6',
+    'Ferrari':             '#F91536',
+    'Scuderia Ferrari':    '#F91536',
+    'Mercedes':            '#6CD3BF',
+    'McLaren':             '#FF8000',
+    'Aston Martin':        '#358C75',
+    'Alpine':              '#FF87BC',
+    'AlphaTauri':          '#5E8FAA',
+    'Scuderia AlphaTauri': '#5E8FAA',
+    'RB':                  '#5E8FAA',
+    'Haas F1 Team':        '#B6BABD',
+    'Haas':                '#B6BABD',
+    'Williams':            '#64C4FF',
+    'Alfa Romeo':          '#C92D4B',
+    'Kick Sauber':         '#00CF46',
+    'Sauber':              '#00CF46',
+    'Racing Point':        '#F596C8',
+    'Renault':             '#FFF500',
+};
+export { TEAM_COLORS };
 
-// Helper function to handle API responses
-async function handleApiResponse(response, errorMessage) {
-    if (response.status < 200 || response.status >= 300) { // Check for non-2xx status
-        console.error(`API Error (${response.status}): ${errorMessage}`);
-        const errorText = response.data ? JSON.stringify(response.data) : response.statusText; // Axios response
-        throw new Error(`${errorMessage} (${response.status}): ${errorText}`);
+function teamColor(teamName) {
+    if (!teamName) return '#E10600';
+    return TEAM_COLORS[teamName.trim()] || '#E10600';
+}
+
+async function apiFetch(path, mockFn, supabaseOptions = null) {
+  try {
+    if (supabaseOptions) {
+      const { table, select = '*', filter = {}, mapFn = null } = supabaseOptions;
+      let query = supabase.from(table).select(select);
+      for (const [key, value] of Object.entries(filter)) {
+        query = query.eq(key, value);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return mapFn ? data.map(mapFn) : data;
+      }
+      if (error) console.warn(`[Supabase] Error fetching ${path}:`, error.message);
     }
-    return response.data; // Axios returns data directly
+    const resp = await axios.get(`${API_BASE_URL}${path}`);
+    return resp.data;
+  } catch (e) {
+    console.warn(`[API] Fetch failed for ${path}:`, e.message);
+    return mockFn ? mockFn() : null;
+  }
 }
 
 // API client for F1 Dash
@@ -24,13 +60,7 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of available seasons
      */
     getSeasons: async () => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/seasons`);
-            return await handleApiResponse(response, 'Failed to fetch seasons');
-        } catch (error) {
-            console.error('Error fetching seasons:', error);
-            throw error;
-        }
+        return await apiFetch('/seasons', null, { table: 'seasons', select: 'year', mapFn: d => d.year });
     },
 
     /**
@@ -39,13 +69,12 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of races for the season
      */
     getRaces: async (year) => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/races/${year}`);
-            return await handleApiResponse(response, `Failed to fetch races for ${year}`);
-        } catch (error) {
-            console.error(`Error fetching races for ${year}:`, error);
-            throw error;
-        }
+        return await apiFetch(`/races/${year}`, null, { 
+            table: 'races', 
+            select: 'round, race_name, circuit_name', 
+            filter: { year: year },
+            mapFn: d => ({ round: d.round, name: d.race_name, circuit: d.circuit_name })
+        });
     },
 
     /**
@@ -55,13 +84,16 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of sessions for the race
      */
     getSessions: async (year, round) => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/sessions/${year}/${round}`);
-            return await handleApiResponse(response, `Failed to fetch sessions for ${year} round ${round}`);
-        } catch (error) {
-            console.error(`Error fetching sessions for ${year} round ${round}:`, error);
-            throw error;
-        }
+        // First get the race ID
+        const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
+        if (raceResponse.error || !raceResponse.data) return [];
+        
+        return await apiFetch(`/sessions/${year}/${round}`, null, { 
+            table: 'sessions', 
+            select: 'type', 
+            filter: { race_id: raceResponse.data.id },
+            mapFn: d => d.type
+        });
     },
 
     /**
@@ -72,16 +104,17 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of drivers in the session
      */
     getDrivers: async (year, round, session) => {
-        try {
-            console.log(`Fetching drivers: ${year}/${round}/${session}`);
-            const response = await axios.get(`${API_BASE_URL}/drivers/${year}/${round}/${session}`);
-            const data = response.data; // axios returns data directly
-            console.log("Drivers data:", data);
-            return data;
-        } catch (error) {
-            console.error(`Error fetching drivers for ${session}:`, error);
-            throw error;
-        }
+        return await apiFetch(`/drivers/${year}/${round}/${session}`, null, { 
+            table: 'drivers', 
+            select: 'driver_code, first_name, last_name, team_name', 
+            filter: { year: year },
+            mapFn: d => ({ 
+                code: d.driver_code, 
+                name: `${d.first_name} ${d.last_name}`, 
+                team: d.team_name,
+                color: teamColor(d.team_name)
+            })
+        });
     },
 
     /**
@@ -93,16 +126,25 @@ const F1DashAPI = {
      * @returns {Promise<Array>} List of laps for the driver
      */
     getLaps: async (year, round, session, driver) => {
-        try {
-            console.log(`Fetching laps: ${year}/${round}/${session}/${driver}`);
-            const response = await axios.get(`${API_BASE_URL}/laps/${year}/${round}/${session}/${driver}`);
-            const data = response.data; // axios returns data directly
-            console.log("Laps data:", data);
-            return data;
-        } catch (error) {
-            console.error(`Error fetching laps for ${driver}:`, error);
-            throw error;
-        }
+        // Get session ID first
+        const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
+        if (raceResponse.error) return [];
+        const sessionResponse = await supabase.from('sessions').select('id').eq('race_id', raceResponse.data.id).eq('type', session).single();
+        if (sessionResponse.error) return [];
+
+        return await apiFetch(`/laps/${year}/${round}/${session}/${driver}`, null, { 
+            table: 'laps', 
+            select: 'lap_number, lap_time, sector1, sector2, sector3, compound', 
+            filter: { session_id: sessionResponse.data.id, driver_code: driver },
+            mapFn: d => ({ 
+                lap: d.lap_number, 
+                time: d.lap_time, 
+                sector1: d.sector1, 
+                sector2: d.sector2, 
+                sector3: d.sector3, 
+                compound: d.compound 
+            })
+        });
     },
 
     /**
@@ -115,15 +157,32 @@ const F1DashAPI = {
      * @returns {Promise<Object>} Telemetry data for the lap
      */
     getTelemetry: async (year, round, session, driver, lap) => {
+        // Get lap ID first
         try {
-            console.log(`Fetching telemetry: ${year}/${round}/${session}/${driver}/${lap}`);
-            const response = await axios.get(`${API_BASE_URL}/telemetry/${year}/${round}/${session}/${driver}/${lap}`);
-            const data = response.data; // axios returns data directly
-            console.log("Telemetry data points:", data.length);
-            return data;
-        } catch (error) {
-            console.error(`Error fetching telemetry for ${driver} lap ${lap}:`, error);
-            throw error;
+            const raceResponse = await supabase.from('races').select('id').eq('year', year).eq('round', round).single();
+            if (raceResponse.error) throw raceResponse.error;
+            const sessionResponse = await supabase.from('sessions').select('id').eq('race_id', raceResponse.data.id).eq('type', session).single();
+            if (sessionResponse.error) throw sessionResponse.error;
+            const lapResponse = await supabase.from('laps').select('id').eq('session_id', sessionResponse.data.id).eq('driver_code', driver).eq('lap_number', lap).single();
+            if (lapResponse.error) throw lapResponse.error;
+
+            return await apiFetch(`/telemetry/${year}/${round}/${session}/${driver}/${lap}`, null, { 
+                table: 'telemetry', 
+                select: 'timestamp, speed, throttle, brake, gear, x, y', 
+                filter: { lap_id: lapResponse.data.id },
+                mapFn: d => ({ 
+                    time: d.timestamp, 
+                    speed: d.speed, 
+                    throttle: d.throttle, 
+                    brake: d.brake, 
+                    gear: d.gear, 
+                    x: d.x, 
+                    y: d.y 
+                })
+            });
+        } catch (e) {
+            console.warn(`[Supabase] Telemetry lookup failed, falling back to backend: ${e.message}`);
+            return await apiFetch(`/telemetry/${year}/${round}/${session}/${driver}/${lap}`);
         }
     },
 
@@ -139,19 +198,7 @@ const F1DashAPI = {
      * @returns {Promise<Object>} Comparison data for both drivers
      */
     compareTelemetry: async (year, round, session, driver1, lap1, driver2, lap2) => {
-        try {
-            console.log(`Comparing telemetry: ${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`);
-            const url =  `${API_BASE_URL}/compare/${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`;
-            console.log("API URL:", url);
-            
-            const response = await axios.get(url);
-            const data = response.data; // axios returns data directly
-            console.log("Comparison data received:", data);
-            return data;
-        } catch (error) {
-            console.error(`Error comparing telemetry:`, error);
-            throw error;
-        }
+        return await apiFetch(`/compare/${year}/${round}/${session}/${driver1}/${lap1}/${driver2}/${lap2}`);
     },
     
     /**
@@ -161,16 +208,27 @@ const F1DashAPI = {
      * @returns {Promise<Object>} Track coordinates and sector boundaries
      */
     getTrackData: async (year, round) => {
-        try {
-            console.log(`Fetching track data: ${year}/${round}`);
-            const response = await axios.get(`${API_BASE_URL}/track/${year}/${round}`);
-            const data = response.data; // axios returns data directly
-            console.log("Track data received:", data);
-            return data;
-        } catch (error) {
-            console.error(`Error fetching track data:`, error);
-            throw error;
+        // Try Supabase first (returns a single track layout per year+round)
+        const { data, error } = await supabase
+            .from('track_layouts')
+            .select('circuit_name, x_coords, y_coords, distances, sector_boundaries')
+            .eq('year', year)
+            .eq('round', round)
+            .single();
+
+        if (!error && data && data.x_coords && data.x_coords.length > 0) {
+            return {
+                circuit_name: data.circuit_name,
+                coordinates: { x: data.x_coords, y: data.y_coords, distance: data.distances },
+                sector_boundaries: data.sector_boundaries || []
+            };
         }
+
+        if (error) console.warn('[Supabase] Track layout not found, falling back to FastAPI:', error.message);
+
+        // Fall back to FastAPI (returns full track object including sector_boundaries)
+        const resp = await axios.get(`${API_BASE_URL}/track/${year}/${round}`);
+        return resp.data;
     }
 };
 

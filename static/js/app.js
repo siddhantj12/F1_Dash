@@ -1,5 +1,12 @@
 import F1DashAPI from './api.js';
 import TrackVisualizer from './track.js';
+import { TEAM_COLORS } from './api.js';
+
+// Expose globally so legacy code/templates can resolve colors
+window.getDriverColor = (driverCode, teamName) => {
+    if (!teamName) return '#E10600';
+    return TEAM_COLORS[teamName.trim()] || '#E10600';
+};
 
 // Debug helper function - set to false to disable
 const DEBUG_ENABLED = true;
@@ -29,11 +36,12 @@ function clearDebug() {
 
 // Function to get team color
 function getTeamColor(teamName) {
-    if (!teamName) return TEAM_COLORS.DEFAULT;
-    const color = TEAM_COLORS[teamName.trim()] || TEAM_COLORS.DEFAULT;
+    if (!teamName) return '#E10600';
+    const color = TEAM_COLORS[teamName.trim()] || '#E10600';
     debug(`Team color for "${teamName}"`, color);
     return color;
 }
+
 
 // Function to extract team name from option text
 function extractTeamName(optionText) {

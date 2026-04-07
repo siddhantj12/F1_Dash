@@ -1,523 +1,454 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 Dash</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
-    <style>
-        :root {
-            --f1-red: #e10600;
-            --f1-dark: #0f0f14;
-            --f1-darker: #0b0b10;
-            --f1-light: #f8f8f8;
-            --f1-gray: #1f1f28;
-            --f1-gray-2: #2b2b36;
-            --f1-border: #2a2a36;
-            --f1-muted: #9aa0a6;
-            --f1-glow: rgba(225, 6, 0, 0.2);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Titillium Web', Arial, sans-serif;
-        }
-        
-        body {
-            background-color: var(--f1-dark);
-            color: var(--f1-light);
-            line-height: 1.6;
-        }
-        
-        .top-bar {
-            background: linear-gradient(135deg, #181821 0%, #121218 100%);
-            padding: 0.9rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--f1-border);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1 Dash — Premium Telemetry Dashboard</title>
+  <meta name="description" content="F1 Dash: A premium Formula 1 telemetry and race analytics dashboard. Compare lap data, live standings, and driver performance.">
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 1.2rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
+  <!-- Preconnect for fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-        .logo-badge {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
-            background: var(--f1-red);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-        }
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-        .top-actions {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
+  <!-- Axios for HTTP requests -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-        .icon-button {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: var(--f1-gray);
-            border: 1px solid var(--f1-border);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--f1-muted);
-            font-size: 0.85rem;
-        }
-        
-        #status {
-            cursor: pointer; /* Show it's clickable to toggle debug */
-            font-size: 0.9rem;
-            color: var(--f1-muted);
-        }
-        
-        #status.loading::after {
-            content: "...";
-            animation: loading 1.5s infinite;
-        }
-        
-        @keyframes loading {
-            0% { content: "."; }
-            33% { content: ".."; }
-            66% { content: "..."; }
-        }
-        
-        .app-layout {
-            display: grid;
-            grid-template-columns: 320px 1fr 280px;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            min-height: calc(100vh - 64px);
-        }
-        
-        .panel {
-            background: var(--f1-gray);
-            border: 1px solid var(--f1-border);
-            border-radius: 16px;
-            padding: 1rem;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-        }
-
-        .left-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .driver-card {
-            display: grid;
-            gap: 0.75rem;
-            padding: 1rem;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #1a1a24, #121218);
-            border: 1px solid var(--f1-border);
-        }
-
-        .driver-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .driver-avatar {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
-            background: rgba(225, 6, 0, 0.15);
-            border: 1px solid rgba(225, 6, 0, 0.3);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-
-        .driver-title {
-            font-size: 0.9rem;
-            color: var(--f1-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.12rem;
-        }
-
-        .driver-name {
-            font-size: 1.3rem;
-            font-weight: 700;
-        }
-
-        .driver-meta {
-            color: var(--f1-muted);
-            font-size: 0.85rem;
-        }
-
-        .control-group {
-            display: grid;
-            gap: 0.6rem;
-        }
-
-        .control-group label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08rem;
-            color: var(--f1-muted);
-        }
-
-        select, button {
-            padding: 0.65rem 0.8rem;
-            border: 1px solid var(--f1-border);
-            border-radius: 10px;
-            background-color: var(--f1-darker);
-            color: var(--f1-light);
-            font-size: 0.95rem;
-            width: 100%;
-            height: 42px;
-        }
-
-        button {
-            background-color: var(--f1-red);
-            color: white;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            font-weight: 700;
-            letter-spacing: 0.04rem;
-            border: none;
-            box-shadow: 0 0 20px var(--f1-glow);
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 0 30px var(--f1-glow);
-        }
-
-        button:disabled {
-            background-color: #444;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        .content-panel {
-            display: grid;
-            gap: 1rem;
-        }
-
-        .track-card {
-            padding: 1rem;
-            border-radius: 16px;
-            background: linear-gradient(160deg, #1b1b26, #101016);
-            border: 1px solid var(--f1-border);
-            position: relative;
-        }
-
-        .track-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .track-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-        }
-
-        #track-chart {
-            height: 280px;
-            border-radius: 12px;
-            background: #0b0b10;
-            border: 1px solid var(--f1-border);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .insights-bar {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.5rem;
-            margin-top: 0.75rem;
-        }
-
-        .insight-chip {
-            background: var(--f1-gray-2);
-            border: 1px solid var(--f1-border);
-            padding: 0.65rem 0.7rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            color: var(--f1-muted);
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-        }
-
-        .charts {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .chart-container {
-            background-color: var(--f1-gray);
-            padding: 1rem;
-            border-radius: 14px;
-            height: 240px;
-            position: relative;
-            border: 1px solid var(--f1-border);
-        }
-
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            font-size: 0.95rem;
-            color: var(--f1-muted);
-        }
-        
-        .comparison-info {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 0.5rem;
-            margin-bottom: 0.75rem;
-            background-color: var(--f1-gray-2);
-            padding: 0.75rem;
-            border-radius: 12px;
-            border: 1px solid var(--f1-border);
-        }
-        
-        .driver-info {
-            display: flex;
-            align-items: center;
-        }
-        
-        .color-indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .delta {
-            font-weight: bold;
-        }
-        
-        .delta-positive {
-            color: #ff4d4d;
-        }
-        
-        .delta-negative {
-            color: #4dff4d;
-        }
-
-        .right-panel {
-            display: grid;
-            gap: 1rem;
-            align-content: start;
-        }
-
-        .standings-list {
-            display: grid;
-            gap: 0.6rem;
-            margin-top: 0.5rem;
-        }
-
-        .standing-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.5rem 0.6rem;
-            border-radius: 10px;
-            background: #171720;
-            border: 1px solid var(--f1-border);
-            font-size: 0.85rem;
-        }
-
-        .standing-driver {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .standing-position {
-            color: var(--f1-muted);
-            font-weight: 700;
-            width: 20px;
-        }
-
-        .pill {
-            background: rgba(225, 6, 0, 0.15);
-            border: 1px solid rgba(225, 6, 0, 0.3);
-            color: #ffb4b4;
-            font-size: 0.75rem;
-            padding: 0.1rem 0.4rem;
-            border-radius: 999px;
-        }
-
-        #debug-info {
-            margin-top: 0.5rem;
-            padding: 0.75rem;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 8px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            display: none;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        @media (max-width: 1100px) {
-            .app-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <header class="top-bar">
-        <div class="logo">
-            <span class="logo-badge">F1</span>
+  <div class="app-container">
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <nav class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-flag-checkered"></i></div>
+        <div class="brand-text">F1 <span>Dash</span></div>
+      </div>
+
+      <div class="search-bar">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Search drivers, races…" aria-label="Search">
+      </div>
+
+      <div class="nav-section-label">Main</div>
+      <ul class="nav-links" id="nav-main">
+        <li class="active" data-target="telemetry-view" id="nav-telemetry">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span>Telemetry</span>
+        </li>
+        <li data-target="news-view" id="nav-news">
+          <i class="fa-regular fa-newspaper"></i>
+          <span>News & Insights</span>
+          <span class="nav-pill">NEW</span>
+        </li>
+        <li id="nav-live">
+          <i class="fa-solid fa-tower-broadcast"></i>
+          <span>Live Hub</span>
+        </li>
+      </ul>
+
+      <div class="nav-section-label" style="margin-top:16px;">More</div>
+      <ul class="nav-links bottom-links">
+        <li>
+          <i class="fa-regular fa-calendar-days"></i>
+          <span>Calendar</span>
+        </li>
+        <li>
+          <i class="fa-solid fa-sliders"></i>
+          <span>Settings</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="avatar-sm">F1</div>
+        <div>
+          <div class="footer-name">F1 Fan</div>
+          <div class="footer-role">Race Analyst</div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ===================== MAIN CONTENT ===================== -->
+    <main class="main-content">
+
+      <!-- TOP BAR -->
+      <header class="top-bar">
+        <div class="topbar-left">
+          <button class="nav-toggle" id="nav-toggle" aria-label="Toggle sidebar">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="topbar-breadcrumb">
             <span>F1 Dash</span>
+            <span class="sep">/</span>
+            <span class="current" id="current-page-title">Telemetry</span>
+          </div>
         </div>
-        <div class="top-actions">
-            <div id="status">Ready</div>
-            <span class="icon-button">⚙</span>
-            <span class="icon-button">🔔</span>
+
+        <div class="topbar-right">
+          <div class="status-pill">
+            <span class="status-dot"></span>
+            <span id="app-status" hidden></span><span id="status">Ready</span>
+          </div>
+          <button class="icon-btn" data-tooltip="Notifications" aria-label="Notifications">
+            <i class="fa-regular fa-bell"></i>
+            <span class="badge"></span>
+          </button>
+          <button class="icon-btn" data-tooltip="Bookmark" aria-label="Bookmark">
+            <i class="fa-regular fa-bookmark"></i>
+          </button>
+          <button class="profile-btn" aria-label="Profile">F1</button>
         </div>
-    </header>
-    
-    <main class="app-layout">
-        <aside class="left-panel">
-            <section class="driver-card">
-                <div class="driver-header">
-                    <div class="driver-avatar" id="primary-driver-avatar">P1</div>
-                    <div>
-                        <div class="driver-title">Primary Driver</div>
-                        <div class="driver-name" id="primary-driver-name">Select a driver</div>
-                        <div class="driver-meta" id="primary-driver-team">—</div>
+      </header>
+
+      <!-- VIEWS CONTAINER -->
+      <div class="views-container">
+
+        <!-- ===== TELEMETRY VIEW ===== -->
+        <div id="telemetry-view" class="view active">
+          <div class="telemetry-layout">
+
+            <!-- LEFT: Control Panel -->
+            <aside class="control-panel" aria-label="Driver selection controls">
+
+              <!-- PRIMARY DRIVER CARD -->
+              <div class="driver-card primary" id="primary-driver-card">
+                <div class="card-label">Primary Driver</div>
+                <div class="driver-profile">
+                  <div class="driver-num" id="primary-driver-number">1</div>
+                  <div class="driver-img" id="primary-driver-avatar">VER</div>
+                  <div class="driver-info">
+                    <div class="driver-name-text" id="primary-driver-name">Select a driver</div>
+                    <div class="driver-team-text">
+                      <span class="team-dot" id="primary-team-dot" style="background: var(--redbull)"></span>
+                      <span id="primary-driver-team">—</span>
                     </div>
+                  </div>
                 </div>
-                <div class="control-group">
-                    <label for="season-select">Season</label>
-                    <select id="season-select">
-                        <option value="">Select Season</option>
-                    </select>
+                <div class="dropdown-group">
+                  <select id="season-select" class="glass-select" aria-label="Select season">
+                    <option value="">Season</option>
+                  </select>
+                  <select id="race-select" class="glass-select" disabled aria-label="Select race">
+                    <option value="">Race</option>
+                  </select>
+                  <select id="session-select" class="glass-select" disabled aria-label="Select session">
+                    <option value="">Session</option>
+                  </select>
+                  <select id="driver-select" class="glass-select" disabled aria-label="Select primary driver">
+                    <option value="">Driver</option>
+                  </select>
+                  <select id="lap-select" class="glass-select" disabled aria-label="Select lap">
+                    <option value="">Lap</option>
+                  </select>
                 </div>
-                <div class="control-group">
-                    <label for="race-select">Race</label>
-                    <select id="race-select" disabled>
-                        <option value="">Select Race</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="session-select">Session</label>
-                    <select id="session-select" disabled>
-                        <option value="">Select Session</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="driver-select">Driver</label>
-                    <select id="driver-select" disabled>
-                        <option value="">Select Driver</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="lap-select">Lap</label>
-                    <select id="lap-select" disabled>
-                        <option value="">Select Lap</option>
-                    </select>
-                </div>
-            </section>
+              </div>
 
-            <section class="driver-card">
-                <div class="driver-header">
-                    <div class="driver-avatar" id="compare-driver-avatar">C2</div>
-                    <div>
-                        <div class="driver-title">Comparison Driver</div>
-                        <div class="driver-name" id="compare-driver-name">Optional</div>
-                        <div class="driver-meta" id="compare-driver-team">—</div>
+              <!-- COMPARISON DRIVER CARD -->
+              <div class="driver-card comparison locked" id="comparison-driver-card">
+                <div class="card-label">Comparison Driver</div>
+                <div class="driver-profile">
+                  <div class="driver-num" style="color: var(--ferrari); text-shadow: 0 0 20px rgba(249,21,54,0.6);">16</div>
+                  <div class="driver-img" id="compare-driver-avatar">LEC</div>
+                  <div class="driver-info">
+                    <div class="driver-name-text" id="compare-driver-name">Optional</div>
+                    <div class="driver-team-text">
+                      <span class="team-dot" id="compare-team-dot" style="background: var(--ferrari)"></span>
+                      <span id="compare-driver-team">—</span>
                     </div>
+                  </div>
                 </div>
-                <div class="control-group">
-                    <label for="compare-driver-select">Driver</label>
-                    <select id="compare-driver-select" disabled>
-                        <option value="">Compare with Driver (optional)</option>
-                    </select>
+                <div class="dropdown-group">
+                  <select id="compare-driver-select" class="glass-select" disabled aria-label="Select comparison driver">
+                    <option value="">Compare with Driver (optional)</option>
+                  </select>
+                  <select id="compare-lap-select" class="glass-select" disabled aria-label="Select comparison lap">
+                    <option value="">Select Lap</option>
+                  </select>
                 </div>
-                <div class="control-group">
-                    <label for="compare-lap-select">Lap</label>
-                    <select id="compare-lap-select" disabled>
-                        <option value="">Select Lap</option>
-                    </select>
-                </div>
-            </section>
+              </div>
 
-            <button id="load-data" disabled>Load Telemetry</button>
-            <div id="debug-info"></div>
-        </aside>
+              <!-- LOAD BUTTON -->
+              <button id="load-data" class="btn-primary huge-cta" disabled aria-label="Load telemetry data">
+                <span><i class="fa-solid fa-bolt" style="margin-right: 8px;"></i>LOAD TELEMETRY</span>
+              </button>
 
-        <section class="content-panel">
-            <div class="track-card">
+            </aside>
+
+            <!-- CENTER: Track + Charts -->
+            <section class="center-panel">
+
+              <!-- Track Map Card -->
+              <div class="glass-card track-card">
                 <div class="track-header">
-                    <div class="track-title" id="track-title">Track + Telemetry</div>
-                    <span class="pill" id="track-season-pill">—</span>
+                  <div class="track-title-group">
+                    <h2 class="track-name" id="track-title">Select a Race</h2>
+                    <span class="track-season-pill" id="track-season-pill">— / — / —</span>
+                  </div>
+                  <div class="track-actions">
+                    <button class="icon-btn small" data-tooltip="Fullscreen" aria-label="Fullscreen track">
+                      <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button class="icon-btn small" data-tooltip="Share" aria-label="Share">
+                      <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                    </button>
+                  </div>
                 </div>
-                <div id="track-chart">
-                    <div class="loading">Track visualization will appear here</div>
-                </div>
-                <div class="insights-bar">
-                    <div class="insight-chip" id="insight-1">Select a session to surface insights.</div>
-                    <div class="insight-chip" id="insight-2">Load two drivers to compare lap pace.</div>
-                    <div class="insight-chip" id="insight-3">Track sectors highlight time gains.</div>
-                </div>
-            </div>
 
-            <div class="charts">
-                <div class="chart-container" id="speed-chart">
-                    <div class="loading">Select data to display speed chart</div>
+                <div class="track-canvas-container">
+                  <div id="track-chart" style="width:100%;height:100%;"></div>
                 </div>
-                <div class="chart-container" id="throttle-brake-chart">
-                    <div class="loading">Select data to display throttle/brake chart</div>
-                </div>
-                <div class="chart-container" id="gear-chart">
-                    <div class="loading">Select data to display gear chart</div>
-                </div>
-            </div>
-        </section>
 
-        <aside class="right-panel">
-            <section class="panel">
-                <div class="driver-title">Race Standings</div>
-                <div class="standings-list" id="standings-list">
-                    <div class="standing-row">
-                        <div class="standing-driver">
-                            <span class="standing-position">—</span>
-                            <span>Waiting for live standings…</span>
-                        </div>
-                        <span class="driver-meta">—</span>
-                    </div>
+                <div class="insight-chips">
+                  <div class="chip" id="insight-1">Select a session to surface insights.</div>
+                  <div class="chip" id="insight-2">Load two drivers to compare lap pace.</div>
+                  <div class="chip" id="insight-3">Track sectors highlight time gains.</div>
                 </div>
+              </div>
+
+              <!-- Telemetry Charts -->
+              <div class="charts-container">
+                <div class="glass-card chart-card">
+                  <div class="chart-card-header">
+                    <span class="chart-title"><i class="fa-solid fa-tachometer-alt" style="margin-right:6px;color:var(--red);opacity:0.7;"></i>Speed</span>
+                    <div class="chart-legend" id="speed-legend"></div>
+                  </div>
+                  <div class="chart-wrapper">
+                    <div id="speed-chart" class="loading-placeholder">Select data to display speed chart</div>
+                  </div>
+                </div>
+
+                <div class="glass-card chart-card">
+                  <div class="chart-card-header">
+                    <span class="chart-title"><i class="fa-solid fa-circle-stop" style="margin-right:6px;color:var(--red);opacity:0.7;"></i>Throttle &amp; Brake</span>
+                    <div class="chart-legend" id="throttle-legend"></div>
+                  </div>
+                  <div class="chart-wrapper">
+                    <div id="throttle-brake-chart" class="loading-placeholder">Select data to display throttle/brake chart</div>
+                  </div>
+                </div>
+              </div>
             </section>
-        </aside>
+
+            <!-- RIGHT: Standings + Driver Meta -->
+            <aside class="right-panel" aria-label="Race standings">
+              <!-- Standings Card -->
+              <div class="glass-card standings-card">
+                <div class="standings-header">
+                  <h2 class="standings-title">Race Standings</h2>
+                  <span class="standings-badge">LIVE</span>
+                </div>
+                <div id="standings-list">
+                  <!-- Populated by JS -->
+                  <div class="standing-row">
+                    <span class="standing-position top3">1</span>
+                    <span class="team-stripe" style="background:var(--redbull)"></span>
+                    <span class="standing-name">Verstappen</span>
+                    <span class="standing-gap leader">LEAD</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position top3">2</span>
+                    <span class="team-stripe" style="background:var(--ferrari)"></span>
+                    <span class="standing-name">Leclerc</span>
+                    <span class="standing-gap">+0.000</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position top3">3</span>
+                    <span class="team-stripe" style="background:var(--mclaren)"></span>
+                    <span class="standing-name">Norris</span>
+                    <span class="standing-gap">+0.336</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position">4</span>
+                    <span class="team-stripe" style="background:var(--aston)"></span>
+                    <span class="standing-name">Alonso</span>
+                    <span class="standing-gap">+0.824</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position">5</span>
+                    <span class="team-stripe" style="background:var(--mercedes)"></span>
+                    <span class="standing-name">Russell</span>
+                    <span class="standing-gap">+1.638</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position">6</span>
+                    <span class="team-stripe" style="background:var(--ferrari)"></span>
+                    <span class="standing-name">Sainz</span>
+                    <span class="standing-gap">+1.833</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position">7</span>
+                    <span class="team-stripe" style="background:var(--mclaren)"></span>
+                    <span class="standing-name">Piastri</span>
+                    <span class="standing-gap">+2.000</span>
+                  </div>
+                  <div class="standing-row">
+                    <span class="standing-position">8</span>
+                    <span class="team-stripe" style="background:var(--mercedes)"></span>
+                    <span class="standing-name">Hamilton</span>
+                    <span class="standing-gap">+2.607</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Driver Comparison Meta Card -->
+              <div class="glass-card driver-meta-card">
+                <div class="driver-meta-label">Comparison View</div>
+                <div class="driver-meta-row">
+                  <div class="driver-avatar" id="meta-avatar-1" style="background:rgba(54,113,198,0.15);border-color:rgba(54,113,198,0.3);">P1</div>
+                  <div class="driver-meta-info">
+                    <div class="driver-meta-name" id="meta-name-1">Primary</div>
+                    <div class="driver-meta-team" id="meta-team-1">—</div>
+                  </div>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="driver-meta-row">
+                  <div class="driver-avatar" id="meta-avatar-2" style="background:rgba(249,21,54,0.1);border-color:rgba(249,21,54,0.25);">C2</div>
+                  <div class="driver-meta-info">
+                    <div class="driver-meta-name" id="meta-name-2">Comparison</div>
+                    <div class="driver-meta-team" id="meta-team-2">—</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gear chart -->
+              <div class="glass-card chart-card" style="min-height:120px;">
+                <div class="chart-card-header">
+                  <span class="chart-title"><i class="fa-solid fa-gears" style="margin-right:6px;color:var(--red);opacity:0.7;"></i>Gear</span>
+                </div>
+                <div class="chart-wrapper">
+                  <div id="gear-chart" class="loading-placeholder">Gear data</div>
+                </div>
+              </div>
+            </aside>
+
+          </div>
+        </div>
+
+        <!-- ===== NEWS VIEW ===== -->
+        <div id="news-view" class="view">
+          <div class="news-layout">
+
+            <!-- Hero Spotlight -->
+            <div class="hero-spotlight">
+              <div class="hero-bg"></div>
+              <div class="hero-content">
+                <p class="hero-eyebrow">Breaking News</p>
+                <h1 class="hero-headline">Upgrades Arrive for Ferrari in Suzuka</h1>
+                <div class="tag-row">
+                  <span class="tag">Tech</span>
+                  <span class="tag">Grand Prix</span>
+                  <span class="tag">Team Radio</span>
+                  <span class="tag">Strategy</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Insights Ribbon -->
+            <div class="insights-ribbon">
+              <span class="ribbon-label">Live Insights</span>
+              <div class="ribbon-divider"></div>
+              <div class="marquee-wrap">
+                <p class="marquee-content">
+                  &bull;&nbsp; Weather shift expected in Q2 &nbsp;&bull;&nbsp;
+                  DRS detection zone extended at Turn 1 &nbsp;&bull;&nbsp;
+                  Upcoming pit stop strategies explained &nbsp;&bull;&nbsp;
+                  Red Bull reports potential hydraulic issue &nbsp;&bull;&nbsp;
+                  Ferrari bringing 3 upgrade packages to Suzuka &nbsp;&bull;&nbsp;
+                  Verstappen fastest in FP2 by 0.4s
+                </p>
+              </div>
+            </div>
+
+            <!-- News Grid -->
+            <div class="news-grid">
+              <div class="glass-card news-card">
+                <div class="news-card-img">
+                  <div class="news-team-badge" style="color:var(--redbull);">
+                    <i class="fa-solid fa-circle" style="font-size:8px;"></i>Red Bull Racing
+                  </div>
+                </div>
+                <div class="news-card-body">
+                  <div class="news-card-meta">
+                    <span>Team Update</span><span class="dot">·</span><span>2h ago</span>
+                  </div>
+                  <h4>Verstappen Challenges New Floor Regulations</h4>
+                  <p>Red Bull claims unfair advantage for rivals under new 2025 floor rules.</p>
+                </div>
+              </div>
+
+              <div class="glass-card news-card featured">
+                <div class="news-card-img" style="background:linear-gradient(135deg, rgba(225,6,0,0.15), rgba(100,0,0,0.3));">
+                  <div class="news-team-badge" style="color:var(--ferrari);">
+                    <i class="fa-solid fa-circle" style="font-size:8px;"></i>Ferrari
+                  </div>
+                </div>
+                <div class="news-card-body">
+                  <div class="news-card-meta">
+                    <span>Personalized Insight</span><span class="dot">·</span><span>4h ago</span>
+                  </div>
+                  <h4>Hamilton Sidepod Upgrade Analysis</h4>
+                  <p>New sidepod design could gain 0.2s per lap through improved airflow to the rear diffuser.</p>
+                </div>
+              </div>
+
+              <div class="glass-card news-card">
+                <div class="news-card-img" style="background:linear-gradient(135deg, rgba(255,128,0,0.1), rgba(100,50,0,0.3));">
+                  <div class="news-team-badge" style="color:var(--mclaren);">
+                    <i class="fa-solid fa-circle" style="font-size:8px;"></i>McLaren
+                  </div>
+                </div>
+                <div class="news-card-body">
+                  <div class="news-card-meta">
+                    <span>Race Preview</span><span class="dot">·</span><span>6h ago</span>
+                  </div>
+                  <h4>McLaren Eye First 1-2 Finish of the Season</h4>
+                  <p>Norris and Piastri both in striking distance after impressive practice pace in Japan.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- .views-container -->
     </main>
-    
-    <!-- Load Chart.js without source maps to avoid 404 errors -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    
-    <!-- Load Axios -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    
-    <!-- Load our JavaScript modules -->
-    <script type="module" src="/static/js/api.js"></script>
-    <script type="module" src="/static/js/app.js"></script>
+  </div><!-- .app-container -->
+
+  <!-- Debug panel (hidden by default) -->
+  <div id="debug-info" style="display:none;position:fixed;bottom:0;right:0;width:380px;max-height:280px;overflow:auto;background:rgba(5,5,7,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:12px 0 0 0;padding:12px;font-size:11px;font-family:monospace;z-index:9999;color:#a0ffa0;"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="/static/js/supabase.js"></script>
+  <script type="module" src="/static/js/api.js"></script>
+  <script type="module" src="/static/js/app.js"></script>
+
+  <!-- Nav tab switching & sidebar toggle -->
+  <script>
+    // Tab switching
+    document.querySelectorAll('[data-target]').forEach(el => {
+      el.addEventListener('click', () => {
+        const target = el.dataset.target;
+        if (!target) return;
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(target)?.classList.add('active');
+        document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
+        el.classList.add('active');
+        const titles = { 'telemetry-view': 'Telemetry', 'news-view': 'News & Insights' };
+        const titleEl = document.getElementById('current-page-title');
+        if (titleEl) titleEl.textContent = titles[target] || target;
+      });
+    });
+
+    // Sidebar toggle (mobile)
+    document.getElementById('nav-toggle')?.addEventListener('click', () => {
+      document.getElementById('sidebar')?.classList.toggle('open');
+    });
+  </script>
 </body>
 </html>
