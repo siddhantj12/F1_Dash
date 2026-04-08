@@ -23,13 +23,29 @@ wheels/
 # Virtual Environment
 .env
 .venv
+.venv*/
 env/
 venv/
+venv*/
 ENV/
 f1_env/
 f1-dash/
 f1dash-venv/
 F1/
+
+# Node / npm
+node_modules/
+package*.json
+skills-lock*.json
+"package 2.json"
+"skills-lock 2.json"
+
+# Cursor / Claude internals
+.claude/
+
+# Misc duplicate files
+*" 2."*
+"check_columns 2.py"
 
 # Cache
 cache/
