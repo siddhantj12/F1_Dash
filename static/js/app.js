@@ -1279,7 +1279,7 @@ const TUTORIAL_STEPS = [
     {
         target: '.track-card',
         title: 'Interactive Track Map',
-        body: 'The full circuit layout is rendered using real GPS coordinates. In comparison mode, <strong>every point on the track is color-coded</strong> based on who\'s faster at that exact position — blue for Driver 1, red for Driver 2.',
+        body: 'The full circuit layout is rendered using real GPS coordinates. In comparison mode, <strong>every point on the track is color-coded</strong> based on who\'s faster at that exact position.',
         tip: 'Hover anywhere on the track to see both drivers\' speed and the time delta at that point.',
         position: 'bottom',
     },
@@ -1357,7 +1357,13 @@ class Tutorial {
         requestAnimationFrame(() => this._overlay.classList.add('active'));
     }
 
+    _clearHighlight() {
+        const prev = document.querySelector('.tutorial-highlight');
+        if (prev) prev.classList.remove('tutorial-highlight');
+    }
+
     _show(idx) {
+        this._clearHighlight();
         this._step = idx;
         const step = TUTORIAL_STEPS[idx];
         const total = TUTORIAL_STEPS.length;
@@ -1454,6 +1460,7 @@ class Tutorial {
             return;
         }
 
+        el.classList.add('tutorial-highlight');
         const r = el.getBoundingClientRect();
         const pad = 12;
         this._spotlight.style.top = `${r.top - pad}px`;
@@ -1580,6 +1587,7 @@ class Tutorial {
     }
 
     _finish() {
+        this._clearHighlight();
         localStorage.setItem('f1dash_tutorial_done', '1');
         document.removeEventListener('keydown', this._onKey);
         this._overlay.classList.remove('active');

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>F1 Dash — Premium Telemetry Dashboard</title>
-  <meta name="description" content="F1 Dash: A premium Formula 1 telemetry and race analytics dashboard. Compare lap data, live standings, and driver performance.">
+  <title>F1 Dash — Telemetry & Race Analytics</title>
+  <meta name="description" content="F1 Dash: Formula 1 telemetry and race analytics dashboard. Compare lap data, live standings, and driver performance.">
 
   <!-- Preconnect for fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -285,84 +285,47 @@
         <div id="news-view" class="view">
           <div class="news-layout">
 
-            <!-- Hero Spotlight -->
-            <div class="hero-spotlight">
+            <!-- Hero Spotlight (filled dynamically from latest article) -->
+            <div class="hero-spotlight" id="news-hero">
               <div class="hero-bg"></div>
               <div class="hero-content">
-                <p class="hero-eyebrow">Breaking News</p>
-                <h1 class="hero-headline">Upgrades Arrive for Ferrari in Suzuka</h1>
-                <div class="tag-row">
-                  <span class="tag">Tech</span>
-                  <span class="tag">Grand Prix</span>
-                  <span class="tag">Team Radio</span>
-                  <span class="tag">Strategy</span>
-                </div>
+                <p class="hero-eyebrow"><i class="fa-solid fa-bolt" style="margin-right:6px;"></i>Latest</p>
+                <h1 class="hero-headline" id="hero-headline">Loading latest F1 news...</h1>
+                <div class="hero-meta" id="hero-meta"></div>
+                <div class="tag-row" id="hero-tags"></div>
               </div>
             </div>
 
-            <!-- Live Insights Ribbon -->
+            <!-- Live Headlines Ribbon -->
             <div class="insights-ribbon">
-              <span class="ribbon-label">Live Insights</span>
+              <span class="ribbon-label">Headlines</span>
               <div class="ribbon-divider"></div>
               <div class="marquee-wrap">
-                <p class="marquee-content">
-                  &bull;&nbsp; Weather shift expected in Q2 &nbsp;&bull;&nbsp;
-                  DRS detection zone extended at Turn 1 &nbsp;&bull;&nbsp;
-                  Upcoming pit stop strategies explained &nbsp;&bull;&nbsp;
-                  Red Bull reports potential hydraulic issue &nbsp;&bull;&nbsp;
-                  Ferrari bringing 3 upgrade packages to Suzuka &nbsp;&bull;&nbsp;
-                  Verstappen fastest in FP2 by 0.4s
-                </p>
+                <p class="marquee-content" id="news-marquee">Loading headlines...</p>
               </div>
             </div>
 
-            <!-- News Grid -->
-            <div class="news-grid">
-              <div class="glass-card news-card">
-                <div class="news-card-img">
-                  <div class="news-team-badge" style="color:var(--redbull);">
-                    <i class="fa-solid fa-circle" style="font-size:8px;"></i>Red Bull Racing
-                  </div>
-                </div>
-                <div class="news-card-body">
-                  <div class="news-card-meta">
-                    <span>Team Update</span><span class="dot">·</span><span>2h ago</span>
-                  </div>
-                  <h4>Verstappen Challenges New Floor Regulations</h4>
-                  <p>Red Bull claims unfair advantage for rivals under new 2025 floor rules.</p>
-                </div>
-              </div>
+            <!-- Category Filter Bar -->
+            <div class="news-filters" id="news-filters">
+              <button class="news-filter-btn active" data-category="">All</button>
+              <button class="news-filter-btn" data-category="Race Weekend">Race Weekend</button>
+              <button class="news-filter-btn" data-category="Technical">Technical</button>
+              <button class="news-filter-btn" data-category="Transfer">Transfer</button>
+              <button class="news-filter-btn" data-category="Regulation">Regulation</button>
+              <button class="news-filter-btn" data-category="Strategy">Strategy</button>
+              <button class="news-filter-btn" data-category="News">General</button>
+            </div>
 
-              <div class="glass-card news-card featured">
-                <div class="news-card-img" style="background:linear-gradient(135deg, rgba(225,6,0,0.15), rgba(100,0,0,0.3));">
-                  <div class="news-team-badge" style="color:var(--ferrari);">
-                    <i class="fa-solid fa-circle" style="font-size:8px;"></i>Ferrari
-                  </div>
-                </div>
-                <div class="news-card-body">
-                  <div class="news-card-meta">
-                    <span>Personalized Insight</span><span class="dot">·</span><span>4h ago</span>
-                  </div>
-                  <h4>Hamilton Sidepod Upgrade Analysis</h4>
-                  <p>New sidepod design could gain 0.2s per lap through improved airflow to the rear diffuser.</p>
-                </div>
-              </div>
-
-              <div class="glass-card news-card">
-                <div class="news-card-img" style="background:linear-gradient(135deg, rgba(255,128,0,0.1), rgba(100,50,0,0.3));">
-                  <div class="news-team-badge" style="color:var(--mclaren);">
-                    <i class="fa-solid fa-circle" style="font-size:8px;"></i>McLaren
-                  </div>
-                </div>
-                <div class="news-card-body">
-                  <div class="news-card-meta">
-                    <span>Race Preview</span><span class="dot">·</span><span>6h ago</span>
-                  </div>
-                  <h4>McLaren Eye First 1-2 Finish of the Season</h4>
-                  <p>Norris and Piastri both in striking distance after impressive practice pace in Japan.</p>
-                </div>
+            <!-- News Grid (filled dynamically) -->
+            <div class="news-grid" id="news-grid">
+              <div class="news-loading">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size:20px;color:var(--red);"></i>
+                <span>Fetching news from multiple sources...</span>
               </div>
             </div>
+
+            <!-- Source attribution -->
+            <div class="news-sources" id="news-sources"></div>
 
           </div>
         </div>
@@ -397,6 +360,149 @@
     // Sidebar toggle (mobile)
     document.getElementById('nav-toggle')?.addEventListener('click', () => {
       document.getElementById('sidebar')?.classList.toggle('open');
+    });
+
+    // ======== NEWS & INSIGHTS ========
+    let _newsArticles = [];
+    let _activeCategory = '';
+
+    async function loadNews() {
+      try {
+        const [newsResp, headlinesResp] = await Promise.all([
+          axios.get('/api/news?limit=50'),
+          axios.get('/api/news/headlines?limit=10'),
+        ]);
+
+        _newsArticles = newsResp.data.articles || [];
+
+        // Populate hero from first article
+        if (_newsArticles.length > 0) {
+          const hero = _newsArticles[0];
+          const heroHeadline = document.getElementById('hero-headline');
+          const heroMeta = document.getElementById('hero-meta');
+          const heroTags = document.getElementById('hero-tags');
+          const heroEl = document.getElementById('news-hero');
+
+          if (heroHeadline) heroHeadline.textContent = hero.title;
+          if (heroMeta) {
+            heroMeta.innerHTML = `
+              <span class="hero-source"><i class="${hero.source_icon}"></i>${hero.source}</span>
+              <span class="dot" style="opacity:0.4;">&middot;</span>
+              <span class="hero-time">${hero.time_ago || ''}</span>
+              ${hero.team ? `<span class="dot" style="opacity:0.4;">&middot;</span><span style="color:${hero.team.color};font-weight:600;">${hero.team.name}</span>` : ''}
+            `;
+          }
+          if (heroTags) {
+            const tags = [hero.category];
+            if (hero.team) tags.push(hero.team.name);
+            tags.push(hero.source);
+            heroTags.innerHTML = tags.map(t => `<span class="tag">${t}</span>`).join('');
+          }
+          if (heroEl) {
+            heroEl.style.cursor = 'pointer';
+            heroEl.onclick = () => hero.url && window.open(hero.url, '_blank');
+            // Dynamic hero background based on team color
+            const heroGradient = hero.team
+              ? `linear-gradient(to right, rgba(10,10,13,0.95) 0%, rgba(10,10,13,0.6) 55%, ${hero.team.color}22 100%)`
+              : '';
+            if (heroGradient) {
+              const heroBg = heroEl.querySelector('.hero-bg');
+              if (heroBg) heroBg.style.background = heroGradient + `, url('https://images.unsplash.com/photo-1627626021644-8ea13a111a68?auto=format&fit=crop&q=80&w=1600') center/cover no-repeat`;
+            }
+          }
+        }
+
+        // Populate marquee
+        const headlines = headlinesResp.data || [];
+        const marquee = document.getElementById('news-marquee');
+        if (marquee && headlines.length > 0) {
+          marquee.innerHTML = headlines.map(h =>
+            `&bull;&nbsp; ${h.title} <span style="opacity:0.5;font-size:10px;">(${h.source})</span> &nbsp;`
+          ).join('');
+        }
+
+        // Populate sources
+        const sources = [...new Set(_newsArticles.map(a => a.source))];
+        const sourcesEl = document.getElementById('news-sources');
+        if (sourcesEl) {
+          sourcesEl.innerHTML = '<span style="opacity:0.5;">Powered by:</span> ' +
+            sources.map(s => `<span><i class="fa-solid fa-rss"></i>${s}</span>`).join('');
+        }
+
+        renderNewsGrid(_newsArticles);
+      } catch (err) {
+        console.error('Failed to load news:', err);
+        const grid = document.getElementById('news-grid');
+        if (grid) {
+          grid.innerHTML = `<div class="news-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Unable to load news. Check your connection and try again.</p></div>`;
+        }
+      }
+    }
+
+    function renderNewsGrid(articles) {
+      const grid = document.getElementById('news-grid');
+      if (!grid) return;
+
+      // Skip first article (used in hero)
+      const displayArticles = articles.slice(1);
+
+      if (displayArticles.length === 0) {
+        grid.innerHTML = `<div class="news-empty"><i class="fa-regular fa-newspaper"></i><p>No articles found for this category.</p></div>`;
+        return;
+      }
+
+      grid.innerHTML = displayArticles.map((a, i) => {
+        const teamBadge = a.team
+          ? `<div class="news-team-badge" style="color:${a.team.color};"><i class="fa-solid fa-circle" style="font-size:8px;"></i>${a.team.name}</div>`
+          : '';
+        const categoryBadge = `<div class="news-category-badge">${a.category}</div>`;
+        const isFeatured = i < 2 && a.team ? ' featured' : '';
+        const teamColor = a.team ? a.team.color : '#E10600';
+        const imgStyle = a.image
+          ? `background-image: linear-gradient(to bottom, transparent 40%, rgba(10,10,13,0.9)), url('${a.image}'); background-size:cover; background-position:center;`
+          : `background: linear-gradient(135deg, ${teamColor}15, ${teamColor}08);`;
+
+        return `
+          <a href="${a.url}" target="_blank" rel="noopener" class="glass-card news-card${isFeatured}" style="text-decoration:none;color:inherit;">
+            <div class="news-card-img" style="${imgStyle}">
+              ${teamBadge}
+              ${categoryBadge}
+            </div>
+            <div class="news-card-body">
+              <div class="news-card-meta">
+                <span>${a.category}</span><span class="dot">&middot;</span><span>${a.time_ago || ''}</span>
+              </div>
+              <h4>${a.title}</h4>
+              <p>${a.description || ''}</p>
+              <div class="news-card-source"><i class="${a.source_icon}"></i>${a.source}</div>
+            </div>
+          </a>
+        `;
+      }).join('');
+    }
+
+    // Filter bar
+    document.getElementById('news-filters')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.news-filter-btn');
+      if (!btn) return;
+      _activeCategory = btn.dataset.category || '';
+      document.querySelectorAll('.news-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filtered = _activeCategory
+        ? _newsArticles.filter(a => a.category === _activeCategory)
+        : _newsArticles;
+      renderNewsGrid(filtered);
+    });
+
+    // Load news when the News tab is shown
+    let _newsLoaded = false;
+    document.querySelectorAll('[data-target]').forEach(el => {
+      el.addEventListener('click', () => {
+        if (el.dataset.target === 'news-view' && !_newsLoaded) {
+          _newsLoaded = true;
+          loadNews();
+        }
+      });
     });
   </script>
 </body>

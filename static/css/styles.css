@@ -1084,6 +1084,125 @@ select, input { font-family: var(--font-body); }
 .news-card p  { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
 .news-card.featured { border-color: var(--red); box-shadow: 0 0 20px var(--red-dim); }
 
+/* News card source badge (bottom-right) */
+.news-card-source {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.news-card-source i { font-size: 10px; opacity: 0.6; }
+
+/* Category badge on card */
+.news-category-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(225, 6, 0, 0.15);
+  border: 1px solid rgba(225, 6, 0, 0.25);
+  color: var(--red-bright);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+}
+
+/* News Filter Bar */
+.news-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.news-filter-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  font-family: var(--font-body);
+}
+.news-filter-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+}
+.news-filter-btn.active {
+  background: var(--red-dim);
+  border-color: rgba(225, 6, 0, 0.3);
+  color: var(--red-bright);
+}
+
+/* Hero meta line */
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+.hero-meta .hero-source {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.hero-meta .hero-time {
+  opacity: 0.7;
+}
+
+/* News loading state */
+.news-loading {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 20px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* Source attribution */
+.news-sources {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-wrap: wrap;
+}
+.news-sources span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.news-sources i { font-size: 10px; opacity: 0.5; }
+
+/* No results state */
+.news-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-tertiary);
+}
+.news-empty i { font-size: 32px; margin-bottom: 12px; display: block; opacity: 0.3; }
+.news-empty p { font-size: 13px; }
+
 /* =========================================
    UTILITIES
    ========================================= */
@@ -1155,33 +1274,42 @@ select, input { font-family: var(--font-body); }
   position: fixed;
   z-index: 9999;
   border-radius: var(--r-md);
-  border: 2px solid rgba(225, 6, 0, 0.7);
+  border: 2px solid rgba(255, 50, 40, 0.9);
+  background: rgba(255, 255, 255, 0.06);
   box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.88),
-    0 0 40px 8px rgba(225, 6, 0, 0.35),
-    0 0 80px 16px rgba(225, 6, 0, 0.15),
-    inset 0 0 30px 4px rgba(225, 6, 0, 0.08);
+    0 0 0 9999px rgba(0, 0, 0, 0.92),
+    0 0 60px 12px rgba(225, 6, 0, 0.5),
+    0 0 120px 30px rgba(225, 6, 0, 0.25),
+    inset 0 0 50px 10px rgba(225, 6, 0, 0.1);
   pointer-events: none;
   transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   animation: spotlight-pulse 2s ease-in-out infinite;
 }
 @keyframes spotlight-pulse {
   0%, 100% {
-    border-color: rgba(225, 6, 0, 0.7);
+    border-color: rgba(255, 50, 40, 0.9);
     box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.88),
-      0 0 40px 8px rgba(225, 6, 0, 0.35),
-      0 0 80px 16px rgba(225, 6, 0, 0.15),
-      inset 0 0 30px 4px rgba(225, 6, 0, 0.08);
+      0 0 0 9999px rgba(0, 0, 0, 0.92),
+      0 0 60px 12px rgba(225, 6, 0, 0.5),
+      0 0 120px 30px rgba(225, 6, 0, 0.25),
+      inset 0 0 50px 10px rgba(225, 6, 0, 0.1);
   }
   50% {
-    border-color: rgba(255, 32, 24, 0.9);
+    border-color: rgba(255, 80, 60, 1);
     box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.88),
-      0 0 50px 12px rgba(225, 6, 0, 0.45),
-      0 0 100px 24px rgba(225, 6, 0, 0.2),
-      inset 0 0 40px 6px rgba(225, 6, 0, 0.12);
+      0 0 0 9999px rgba(0, 0, 0, 0.92),
+      0 0 80px 18px rgba(225, 6, 0, 0.6),
+      0 0 160px 40px rgba(225, 6, 0, 0.3),
+      inset 0 0 60px 14px rgba(225, 6, 0, 0.15);
   }
+}
+
+/* Class applied to the target element to make it pop */
+.tutorial-highlight {
+  position: relative;
+  z-index: 9999 !important;
+  filter: brightness(1.5) contrast(1.1) !important;
+  transition: filter 0.3s ease !important;
 }
 
 /* Corner accents on spotlight */
@@ -1189,20 +1317,20 @@ select, input { font-family: var(--font-body); }
 .tutorial-spotlight::after {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: var(--red-bright);
+  width: 18px;
+  height: 18px;
+  border-color: #ff4030;
   border-style: solid;
 }
 .tutorial-spotlight::before {
-  top: -2px; left: -2px;
-  border-width: 2px 0 0 2px;
-  border-radius: 4px 0 0 0;
+  top: -3px; left: -3px;
+  border-width: 3px 0 0 3px;
+  border-radius: 5px 0 0 0;
 }
 .tutorial-spotlight::after {
-  bottom: -2px; right: -2px;
-  border-width: 0 2px 2px 0;
-  border-radius: 0 0 4px 0;
+  bottom: -3px; right: -3px;
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 5px 0;
 }
 
 .tutorial-card {

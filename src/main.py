@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from src.routers import auth, drivers, positions, races, telemetry, tires
+from src.routers import auth, drivers, news, positions, races, telemetry, tires
 from src.config import settings
 from src.utils.logger import logger
 from src.etl.data_extractor import TelemetryExtractor
@@ -38,6 +38,7 @@ app.include_router(positions.router, prefix="/api")
 app.include_router(tires.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(drivers.router, prefix="/api")
+app.include_router(news.router, prefix="/api")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
