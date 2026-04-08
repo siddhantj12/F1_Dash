@@ -205,7 +205,7 @@ def _safe_sector_secs(laps_df, lap_num: int, col: str):
         val = row.iloc[0][col]
         if pd.isna(val) or not hasattr(val, "total_seconds"):
             return None
-        return round(val.total_seconds(), 3)
+        return _round(val.total_seconds(), 3)
     except Exception:
         return None
 

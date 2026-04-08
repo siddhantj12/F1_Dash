@@ -1,6 +1,6 @@
 /**
  * F1 Track Visualization
- * Renders the track map with per-point comparison coloring.
+ * Renders the track map with per-point comparison coloring and hover tooltips.
  */
 import F1DashAPI from './api.js';
 
@@ -22,30 +22,177 @@ class TrackVisualizer {
         this.error = null;
         this.singleDriverColor = '#e10600';
 
-        // Per-point color array (one color per track coordinate)
         this.pointColors = null;
+
+        // Cached canvas-space coordinates for hit testing
+        this._canvasPoints = null;
+        this._trackFrac = null;
+        this._interpData = null;
 
         this.canvas.width = this.container.clientWidth;
         this.canvas.height = this.container.clientHeight;
+        this.container.style.position = 'relative';
         this.container.innerHTML = '';
         this.container.appendChild(this.canvas);
 
+        // Tooltip element
+        this._tooltip = document.createElement('div');
+        Object.assign(this._tooltip.style, {
+            position: 'absolute', pointerEvents: 'none', display: 'none',
+            background: 'rgba(10,10,13,0.92)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '8px', padding: '8px 12px', fontSize: '11px',
+            fontFamily: "'Inter', sans-serif", color: '#F0F0F5', zIndex: '10',
+            lineHeight: '1.6', backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        });
+        this.container.appendChild(this._tooltip);
+
+        // Crosshair dot
+        this._dot = document.createElement('div');
+        Object.assign(this._dot.style, {
+            position: 'absolute', pointerEvents: 'none', display: 'none',
+            width: '8px', height: '8px', borderRadius: '50%',
+            background: '#fff', border: '2px solid rgba(255,255,255,0.6)',
+            transform: 'translate(-50%,-50%)', zIndex: '11',
+            boxShadow: '0 0 8px rgba(255,255,255,0.4)',
+        });
+        this.container.appendChild(this._dot);
+
+        this.canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
+        this.canvas.addEventListener('mouseleave', this._onMouseLeave.bind(this));
         window.addEventListener('resize', this.handleResize.bind(this));
         this.showMessage('Select data to display track visualization');
     }
 
+    // ── Hover logic ──────────────────────────────────────────────
+
+    _onMouseMove(e) {
+        if (!this._canvasPoints || this._canvasPoints.length === 0) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        // Find closest track point
+        let bestIdx = 0, bestDist = Infinity;
+        for (let i = 0; i < this._canvasPoints.length; i++) {
+            const dx = this._canvasPoints[i].cx - mx;
+            const dy = this._canvasPoints[i].cy - my;
+            const d = dx * dx + dy * dy;
+            if (d < bestDist) { bestDist = d; bestIdx = i; }
+        }
+
+        if (Math.sqrt(bestDist) > 30) {
+            this._tooltip.style.display = 'none';
+            this._dot.style.display = 'none';
+            return;
+        }
+
+        const pt = this._canvasPoints[bestIdx];
+
+        // Show dot
+        this._dot.style.display = 'block';
+        this._dot.style.left = pt.cx + 'px';
+        this._dot.style.top = pt.cy + 'px';
+
+        // Build tooltip content
+        let html = '';
+        const pct = ((this._trackFrac[bestIdx] || 0) * 100).toFixed(0);
+        html += `<div style="color:var(--text-secondary);margin-bottom:2px;">Track ${pct}%</div>`;
+
+        if (this._interpData && this.comparisonData) {
+            const d = this._interpData[bestIdx];
+            const d1 = this.comparisonData.driver1;
+            const d2 = this.comparisonData.driver2;
+            const c1 = d1.color || '#e10600';
+            const c2 = d2.color || '#3671C6';
+
+            const fmtSpd = v => v != null ? v.toFixed(0) + ' km/h' : '—';
+            const delta = d.t1 != null && d.t2 != null ? (d.t1 - d.t2) : null;
+            const deltaStr = delta != null
+                ? (delta < 0 ? `<span style="color:${c1}">${d1.code} +${Math.abs(delta).toFixed(3)}s</span>`
+                             : `<span style="color:${c2}">${d2.code} +${Math.abs(delta).toFixed(3)}s</span>`)
+                : '—';
+
+            html += `<div><span style="color:${c1}">■</span> ${d1.code}: ${fmtSpd(d.spd1)}</div>`;
+            html += `<div><span style="color:${c2}">■</span> ${d2.code}: ${fmtSpd(d.spd2)}</div>`;
+            html += `<div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:3px;padding-top:3px;">Δ ${deltaStr}</div>`;
+        } else if (this._interpData) {
+            const d = this._interpData[bestIdx];
+            html += `<div>Speed: ${d.spd1 != null ? d.spd1.toFixed(0) + ' km/h' : '—'}</div>`;
+        }
+
+        this._tooltip.innerHTML = html;
+        this._tooltip.style.display = 'block';
+
+        // Position tooltip near cursor, offset to avoid covering the dot
+        const tipW = this._tooltip.offsetWidth;
+        const tipH = this._tooltip.offsetHeight;
+        let tipX = pt.cx + 14;
+        let tipY = pt.cy - tipH - 10;
+        if (tipX + tipW > this.canvas.width) tipX = pt.cx - tipW - 14;
+        if (tipY < 0) tipY = pt.cy + 14;
+        this._tooltip.style.left = tipX + 'px';
+        this._tooltip.style.top = tipY + 'px';
+    }
+
+    _onMouseLeave() {
+        this._tooltip.style.display = 'none';
+        this._dot.style.display = 'none';
+    }
+
+    // ── Interpolation helpers ────────────────────────────────────
+
+    static _interp(fracArr, valArr, f) {
+        if (!fracArr || fracArr.length === 0) return null;
+        if (f <= fracArr[0]) return valArr[0];
+        if (f >= fracArr[fracArr.length - 1]) return valArr[valArr.length - 1];
+        let lo = 0, hi = fracArr.length - 1;
+        while (hi - lo > 1) {
+            const mid = (lo + hi) >> 1;
+            if (fracArr[mid] <= f) lo = mid; else hi = mid;
+        }
+        const t = (f - fracArr[lo]) / ((fracArr[hi] - fracArr[lo]) || 1);
+        return valArr[lo] + t * (valArr[hi] - valArr[lo]);
+    }
+
+    _buildInterpData(data) {
+        if (!this._trackFrac || !data) return null;
+        const n = this._trackFrac.length;
+        const d1 = data.driver1.data;
+        const d2 = data.driver2?.data;
+
+        const maxD1 = d1.distance?.[d1.distance.length - 1] || 1;
+        const frac1 = d1.distance?.map(d => d / maxD1);
+
+        let frac2, maxD2;
+        if (d2?.distance) {
+            maxD2 = d2.distance[d2.distance.length - 1] || 1;
+            frac2 = d2.distance.map(d => d / maxD2);
+        }
+
+        const arr = new Array(n);
+        for (let i = 0; i < n; i++) {
+            const f = this._trackFrac[i];
+            arr[i] = {
+                t1:   frac1 ? TrackVisualizer._interp(frac1, d1.time, f) : null,
+                spd1: frac1 ? TrackVisualizer._interp(frac1, d1.speed, f) : null,
+                t2:   frac2 ? TrackVisualizer._interp(frac2, d2.time, f) : null,
+                spd2: frac2 ? TrackVisualizer._interp(frac2, d2.speed, f) : null,
+            };
+        }
+        return arr;
+    }
+
+    // ── Core methods ─────────────────────────────────────────────
+
     handleResize() {
         this.canvas.width = this.container.clientWidth;
         this.canvas.height = this.container.clientHeight;
-        if (this.error) {
-            this.showError(this.error);
-        } else if (this.isLoading) {
-            this.showLoading();
-        } else if (this.trackData) {
-            this.render();
-        } else {
-            this.showMessage('Select data to display track visualization');
-        }
+        if (this.error) this.showError(this.error);
+        else if (this.isLoading) this.showLoading();
+        else if (this.trackData) this.render();
+        else this.showMessage('Select data to display track visualization');
     }
 
     showMessage(message) {
@@ -66,11 +213,7 @@ class TrackVisualizer {
             this.showLoading();
 
             const trackData = await F1DashAPI.getTrackData(year, round);
-
-            if (!trackData.coordinates ||
-                !trackData.coordinates.x ||
-                !trackData.coordinates.y ||
-                trackData.coordinates.x.length === 0) {
+            if (!trackData.coordinates?.x?.length) {
                 throw new Error('Track data is unavailable or incomplete');
             }
 
@@ -87,64 +230,38 @@ class TrackVisualizer {
         }
     }
 
-    /**
-     * Build a per-track-point color array by interpolating both drivers'
-     * cumulative time at each distance along the track.
-     */
     _buildPointColors(data) {
         if (!this.trackData || !data) return null;
-
         const { coordinates } = this.trackData;
         const n = coordinates.x.length;
         const c1 = data.driver1.color || '#e10600';
         const c2 = data.driver2.color || '#3671C6';
-
         const d1 = data.driver1.data;
         const d2 = data.driver2.data;
 
-        if (!d1.distance || !d2.distance || d1.distance.length < 2 || d2.distance.length < 2) {
-            return null;
-        }
+        if (!d1.distance || !d2.distance || d1.distance.length < 2 || d2.distance.length < 2) return null;
 
-        // Build distance array for track coordinates
+        // Build trackFrac (also used by hover)
         const trackDist = new Float64Array(n);
-        trackDist[0] = 0;
         for (let i = 1; i < n; i++) {
             const dx = coordinates.x[i] - coordinates.x[i - 1];
             const dy = coordinates.y[i] - coordinates.y[i - 1];
             trackDist[i] = trackDist[i - 1] + Math.sqrt(dx * dx + dy * dy);
         }
-        const totalTrackDist = trackDist[n - 1] || 1;
+        const total = trackDist[n - 1] || 1;
+        this._trackFrac = new Float64Array(n);
+        for (let i = 0; i < n; i++) this._trackFrac[i] = trackDist[i] / total;
 
-        // Normalize track distances to [0, 1]
-        const trackFrac = new Float64Array(n);
-        for (let i = 0; i < n; i++) trackFrac[i] = trackDist[i] / totalTrackDist;
-
-        // Normalize telemetry distances to [0, 1]
-        const maxDist1 = d1.distance[d1.distance.length - 1] || 1;
-        const maxDist2 = d2.distance[d2.distance.length - 1] || 1;
-
-        const frac1 = d1.distance.map(d => d / maxDist1);
-        const frac2 = d2.distance.map(d => d / maxDist2);
-
-        // Interpolate time at a given fractional distance
-        function interpTime(fracArr, timeArr, f) {
-            if (f <= fracArr[0]) return timeArr[0];
-            if (f >= fracArr[fracArr.length - 1]) return timeArr[timeArr.length - 1];
-            let lo = 0, hi = fracArr.length - 1;
-            while (hi - lo > 1) {
-                const mid = (lo + hi) >> 1;
-                if (fracArr[mid] <= f) lo = mid; else hi = mid;
-            }
-            const t = (f - fracArr[lo]) / ((fracArr[hi] - fracArr[lo]) || 1);
-            return timeArr[lo] + t * (timeArr[hi] - timeArr[lo]);
-        }
+        const maxD1 = d1.distance[d1.distance.length - 1] || 1;
+        const maxD2 = d2.distance[d2.distance.length - 1] || 1;
+        const frac1 = d1.distance.map(d => d / maxD1);
+        const frac2 = d2.distance.map(d => d / maxD2);
 
         const colors = new Array(n);
         for (let i = 0; i < n; i++) {
-            const f = trackFrac[i];
-            const t1 = interpTime(frac1, d1.time, f);
-            const t2 = interpTime(frac2, d2.time, f);
+            const f = this._trackFrac[i];
+            const t1 = TrackVisualizer._interp(frac1, d1.time, f);
+            const t2 = TrackVisualizer._interp(frac2, d2.time, f);
             colors[i] = t1 <= t2 ? c1 : c2;
         }
         return colors;
@@ -154,6 +271,7 @@ class TrackVisualizer {
         if (!data) return;
         this.comparisonData = data;
         this.pointColors = this._buildPointColors(data);
+        this._interpData = this._buildInterpData(data);
         this.render();
     }
 
@@ -161,6 +279,7 @@ class TrackVisualizer {
         this.singleDriverColor = color || '#e10600';
         this.comparisonData = null;
         this.pointColors = null;
+        this._interpData = null;
         this.render();
     }
 
@@ -168,114 +287,108 @@ class TrackVisualizer {
         const { ctx, canvas } = this;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (!this.trackData) {
-            this.showMessage('Track data not available');
-            return;
-        }
-
+        if (!this.trackData) { this.showMessage('Track data not available'); return; }
         const { coordinates } = this.trackData;
-        if (!coordinates || !coordinates.x || !coordinates.y || coordinates.x.length === 0) {
-            this.showMessage('Track layout data not available');
-            return;
-        }
+        if (!coordinates?.x?.length) { this.showMessage('Track layout data not available'); return; }
 
         const n = coordinates.x.length;
 
-        // 90-degree clockwise rotation + vertical flip: (x,y) -> (-y, -x)
         const rotX = coordinates.y.map(y => -y);
         const rotY = coordinates.x.map(x => -x);
 
-        const minX = Math.min(...rotX);
-        const maxX = Math.max(...rotX);
-        const minY = Math.min(...rotY);
-        const maxY = Math.max(...rotY);
+        const minX = Math.min(...rotX), maxX = Math.max(...rotX);
+        const minY = Math.min(...rotY), maxY = Math.max(...rotY);
 
         const padding = 20;
-        const scaleX = (canvas.width - 2 * padding) / (maxX - minX || 1);
-        const scaleY = (canvas.height - 2 * padding) / (maxY - minY || 1);
-        const scale = Math.min(scaleX, scaleY);
-
+        const scale = Math.min(
+            (canvas.width - 2 * padding) / (maxX - minX || 1),
+            (canvas.height - 2 * padding) / (maxY - minY || 1)
+        );
         const offsetX = (canvas.width - scale * (maxX - minX)) / 2 - scale * minX;
         const offsetY = (canvas.height - scale * (maxY - minY)) / 2 - scale * minY;
 
         const tx = (x, y) => (-y) * scale + offsetX;
         const ty = (x, y) => (-x) * scale + offsetY;
 
+        // Cache canvas-space points for hit testing
+        this._canvasPoints = new Array(n);
+        for (let i = 0; i < n; i++) {
+            this._canvasPoints[i] = { cx: tx(coordinates.x[i], coordinates.y[i]), cy: ty(coordinates.x[i], coordinates.y[i]) };
+        }
+
+        // Build trackFrac if not already built (single driver mode)
+        if (!this._trackFrac || this._trackFrac.length !== n) {
+            const dist = new Float64Array(n);
+            for (let i = 1; i < n; i++) {
+                const dx = coordinates.x[i] - coordinates.x[i - 1];
+                const dy = coordinates.y[i] - coordinates.y[i - 1];
+                dist[i] = dist[i - 1] + Math.sqrt(dx * dx + dy * dy);
+            }
+            const total = dist[n - 1] || 1;
+            this._trackFrac = new Float64Array(n);
+            for (let i = 0; i < n; i++) this._trackFrac[i] = dist[i] / total;
+        }
+
         // Dark base track
         ctx.beginPath();
         ctx.strokeStyle = '#222222';
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 6;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.moveTo(tx(coordinates.x[0], coordinates.y[0]), ty(coordinates.x[0], coordinates.y[0]));
-        for (let i = 1; i < n; i++) {
-            ctx.lineTo(tx(coordinates.x[i], coordinates.y[i]), ty(coordinates.x[i], coordinates.y[i]));
-        }
-        if (Math.abs(coordinates.x[0] - coordinates.x[n - 1]) > 0.1 ||
-            Math.abs(coordinates.y[0] - coordinates.y[n - 1]) > 0.1) {
-            ctx.lineTo(tx(coordinates.x[0], coordinates.y[0]), ty(coordinates.x[0], coordinates.y[0]));
-        }
+        ctx.moveTo(this._canvasPoints[0].cx, this._canvasPoints[0].cy);
+        for (let i = 1; i < n; i++) ctx.lineTo(this._canvasPoints[i].cx, this._canvasPoints[i].cy);
+        ctx.lineTo(this._canvasPoints[0].cx, this._canvasPoints[0].cy);
         ctx.stroke();
 
-        // Colored overlay — per-point when comparison, uniform when single driver
+        // Colored overlay
         if (this.pointColors && this.pointColors.length === n) {
-            // Draw segment-by-segment, batching consecutive same-color segments
             let curColor = this.pointColors[0];
             ctx.beginPath();
             ctx.strokeStyle = curColor;
             ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.moveTo(tx(coordinates.x[0], coordinates.y[0]), ty(coordinates.x[0], coordinates.y[0]));
+            ctx.moveTo(this._canvasPoints[0].cx, this._canvasPoints[0].cy);
 
             for (let i = 1; i < n; i++) {
                 const c = this.pointColors[i];
                 if (c !== curColor) {
-                    // Finish current batch
-                    ctx.lineTo(tx(coordinates.x[i], coordinates.y[i]), ty(coordinates.x[i], coordinates.y[i]));
+                    ctx.lineTo(this._canvasPoints[i].cx, this._canvasPoints[i].cy);
                     ctx.stroke();
-                    // Start new batch
                     curColor = c;
                     ctx.beginPath();
                     ctx.strokeStyle = curColor;
                     ctx.lineWidth = 3;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
-                    ctx.moveTo(tx(coordinates.x[i], coordinates.y[i]), ty(coordinates.x[i], coordinates.y[i]));
+                    ctx.moveTo(this._canvasPoints[i].cx, this._canvasPoints[i].cy);
                 } else {
-                    ctx.lineTo(tx(coordinates.x[i], coordinates.y[i]), ty(coordinates.x[i], coordinates.y[i]));
+                    ctx.lineTo(this._canvasPoints[i].cx, this._canvasPoints[i].cy);
                 }
             }
-            // Close the loop back to start
-            ctx.lineTo(tx(coordinates.x[0], coordinates.y[0]), ty(coordinates.x[0], coordinates.y[0]));
+            ctx.lineTo(this._canvasPoints[0].cx, this._canvasPoints[0].cy);
             ctx.stroke();
         } else {
-            // Single driver — uniform color
             const color = this.singleDriverColor || '#e10600';
             ctx.beginPath();
             ctx.strokeStyle = color;
             ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.moveTo(tx(coordinates.x[0], coordinates.y[0]), ty(coordinates.x[0], coordinates.y[0]));
-            for (let i = 1; i < n; i++) {
-                ctx.lineTo(tx(coordinates.x[i], coordinates.y[i]), ty(coordinates.x[i], coordinates.y[i]));
-            }
-            // Close the loop back to start
-            ctx.lineTo(tx(coordinates.x[0], coordinates.y[0]), ty(coordinates.x[0], coordinates.y[0]));
+            ctx.moveTo(this._canvasPoints[0].cx, this._canvasPoints[0].cy);
+            for (let i = 1; i < n; i++) ctx.lineTo(this._canvasPoints[i].cx, this._canvasPoints[i].cy);
+            ctx.lineTo(this._canvasPoints[0].cx, this._canvasPoints[0].cy);
             ctx.stroke();
         }
 
-        // Start/finish marker
-        const startX = tx(coordinates.x[0], coordinates.y[0]);
-        const startY = ty(coordinates.x[0], coordinates.y[0]);
+        // S/F marker
         ctx.beginPath();
         ctx.fillStyle = '#ffffff';
-        ctx.arc(startX, startY, 4, 0, Math.PI * 2);
+        ctx.arc(this._canvasPoints[0].cx, this._canvasPoints[0].cy, 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.font = '10px Inter, Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('S/F', startX, startY - 8);
+        ctx.fillText('S/F', this._canvasPoints[0].cx, this._canvasPoints[0].cy - 8);
     }
 
     showLoading() {

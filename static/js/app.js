@@ -105,6 +105,9 @@ let speedChart = null;
 let throttleBrakeChart = null;
 let gearChart = null;
 
+// Last fetched standings (used by comparison meta card)
+let _lastStandings = [];
+
 // Add these new DOM Elements
 const compareDriverSelect = document.getElementById('compare-driver-select');
 const compareLapSelect = document.getElementById('compare-lap-select');
@@ -221,6 +224,11 @@ function updateInsights(messages) {
     if (insightThree) insightThree.textContent = text[2] || defaults[2];
 }
 
+function _driverPosition(code) {
+    const entry = _lastStandings.find(s => (s.driver || s.code) === code);
+    return entry ? `P${entry.position}` : '';
+}
+
 function updateComparisonMeta(cmp) {
     const n1 = document.getElementById('meta-name-1');
     const t1 = document.getElementById('meta-team-1');
@@ -231,13 +239,18 @@ function updateComparisonMeta(cmp) {
     if (!n1 || !n2) return;
 
     const d1 = cmp.driver1, d2 = cmp.driver2, delta = cmp.delta;
+    const pos1 = _driverPosition(d1.code);
+    const pos2 = _driverPosition(d2.code);
+
     n1.textContent = `${d1.code} — Lap ${d1.lap}`;
-    t1.textContent = d1.lapTime && d1.lapTime !== 'N/A' ? d1.lapTime : (d1.team || '—');
+    const lt1 = d1.lapTime && d1.lapTime !== 'N/A' ? d1.lapTime : '';
+    t1.textContent = [pos1, lt1, d1.team].filter(Boolean).join(' · ');
     a1.textContent = d1.code;
     if (d1.color) { a1.style.background = `${d1.color}22`; a1.style.borderColor = `${d1.color}66`; }
 
     n2.textContent = `${d2.code} — Lap ${d2.lap}`;
-    t2.textContent = d2.lapTime && d2.lapTime !== 'N/A' ? d2.lapTime : (d2.team || '—');
+    const lt2 = d2.lapTime && d2.lapTime !== 'N/A' ? d2.lapTime : '';
+    t2.textContent = [pos2, lt2, d2.team].filter(Boolean).join(' · ');
     a2.textContent = d2.code;
     if (d2.color) { a2.style.background = `${d2.color}22`; a2.style.borderColor = `${d2.color}66`; }
 
@@ -310,6 +323,7 @@ function renderStandingsRows(positions) {
         .forEach((item) => {
             const row = document.createElement('div');
             row.className = 'standing-row';
+            const driverCode = item.driver || item.code || '';
             const label = item.lap_time && item.lap_time !== 'N/A' && item.lap_time !== '—'
                 ? item.lap_time
                 : (item.gap != null ? `+${Number(item.gap).toFixed(3)}` : '—');
@@ -318,11 +332,47 @@ function renderStandingsRows(positions) {
             row.innerHTML = `
                 <span class="${posClass}">${item.position || '—'}</span>
                 <span class="team-stripe" style="background:${color}"></span>
-                <span class="standing-name">${item.driver || item.code || '—'}</span>
+                <span class="standing-name">${driverCode || '—'}</span>
                 <span class="standing-gap">${label}</span>
             `;
+
+            row.dataset.driver = driverCode;
+            row.addEventListener('click', () => {
+                // Highlight clicked row
+                standingsList.querySelectorAll('.standing-row').forEach(r => r.classList.remove('active'));
+                row.classList.add('active');
+                selectDriverFromStandings(driverCode);
+            });
             standingsList.appendChild(row);
         });
+}
+
+async function selectDriverFromStandings(code) {
+    if (!code || !seasonSelect.value || !raceSelect.value || !sessionSelect.value) return;
+
+    const match = Array.from(driverSelect.options).find(o => o.value === code);
+    if (!match) return;
+
+    const currentLap = lapSelect.value;
+
+    driverSelect.value = code;
+    driverSelect.dispatchEvent(new Event('change'));
+
+    // Wait for laps to finish populating
+    await new Promise(resolve => {
+        const check = () => (lapSelect.options.length > 1) ? resolve() : setTimeout(check, 100);
+        setTimeout(check, 200);
+    });
+
+    // Re-select the same lap that was showing in standings
+    if (currentLap && Array.from(lapSelect.options).some(o => o.value === currentLap)) {
+        lapSelect.value = currentLap;
+    } else if (lapSelect.options.length > 1) {
+        lapSelect.value = lapSelect.options[1].value;
+    }
+    lapSelect.dispatchEvent(new Event('change'));
+
+    loadButton.click();
 }
 
 async function refreshStandings() {
@@ -339,8 +389,10 @@ async function refreshStandings() {
         const positions = resp.data;
         console.log('[Standings] received', positions?.length, 'rows');
         if (positions && positions.length > 0) {
+            _lastStandings = positions;
             renderStandingsRows(positions);
         } else {
+            _lastStandings = [];
             if (standingsList) standingsList.innerHTML = '';
         }
     } catch (err) {
@@ -1174,5 +1226,373 @@ function renderComparisonCharts(comparisonData) {
     });
 }
 
+// =========================================================================
+// ONBOARDING TUTORIAL
+// =========================================================================
+const TUTORIAL_STEPS = [
+    {
+        type: 'welcome',
+        title: 'Welcome to F1 Dash',
+        body: 'Your personal Formula 1 telemetry and race analytics dashboard — built for every fan, from casual to hardcore.',
+        features: [
+            { icon: 'fa-solid fa-gauge-high', text: 'Real telemetry data from every F1 session since 2018' },
+            { icon: 'fa-solid fa-code-compare', text: 'Head-to-head driver comparison with color-coded track maps' },
+            { icon: 'fa-solid fa-ranking-star', text: 'Lap-by-lap standings that update as you explore' },
+            { icon: 'fa-solid fa-hand-pointer', text: 'Click any driver in standings to instantly load their data' },
+        ],
+    },
+    {
+        target: '.sidebar',
+        title: 'Navigation Sidebar',
+        body: 'This is your main navigation hub. Switch between the <strong>Telemetry</strong> view for race data analysis and <strong>News & Insights</strong> for the latest F1 updates.',
+        tip: 'On mobile, tap the hamburger menu icon to open the sidebar.',
+        position: 'right',
+    },
+    {
+        target: '#primary-driver-card',
+        title: 'Select Your Race Weekend',
+        body: 'Start here. The four dropdowns cascade — pick a <strong>Season</strong>, then a <strong>Grand Prix</strong> unlocks, then <strong>Session</strong> (Race, Qualifying, Practice), and finally a <strong>Driver</strong>. Each step unlocks the next automatically.',
+        tip: 'Data is available from 2018 to the latest completed race weekend.',
+        position: 'right',
+    },
+    {
+        target: '#comparison-driver-card',
+        title: 'Add a Comparison Driver',
+        body: 'This is where the magic happens. Once you\'ve picked a primary driver above, select a <strong>second driver</strong> here to see a full head-to-head comparison. The track, charts, and delta timings all update to show who\'s faster and where.',
+        tip: 'This card unlocks automatically once you select your primary driver.',
+        position: 'right',
+    },
+    {
+        target: '#lap-select',
+        title: 'Choose a Lap',
+        body: 'Select which lap to analyse. All telemetry data and standings will correspond to this specific lap. Change laps to see how the race evolved turn by turn.',
+        tip: 'Standings on the right update in real-time when you switch laps.',
+        position: 'right',
+    },
+    {
+        target: '#load-data',
+        title: 'Load Telemetry Data',
+        body: 'Once your selections are made, hit this button to fetch real F1 telemetry. The system pulls data from FastF1\'s official timing feeds — speed, throttle, brake, gear, and GPS position are all included.',
+        tip: 'First loads may take ~10-15 seconds. Repeat requests are cached and near-instant.',
+        position: 'right',
+    },
+    {
+        target: '.track-card',
+        title: 'Interactive Track Map',
+        body: 'The full circuit layout is rendered using real GPS coordinates. In comparison mode, <strong>every point on the track is color-coded</strong> based on who\'s faster at that exact position — blue for Driver 1, red for Driver 2.',
+        tip: 'Hover anywhere on the track to see both drivers\' speed and the time delta at that point.',
+        position: 'bottom',
+    },
+    {
+        target: '.charts-container',
+        title: 'Telemetry Trace Charts',
+        body: 'Three detailed charts show the full telemetry picture:<br><strong>Speed</strong> — top speed, braking zones, and corner minimum speeds.<br><strong>Throttle & Brake</strong> — pedal inputs showing driving style.<br>In comparison mode, both drivers are overlaid with team colors.',
+        position: 'top',
+    },
+    {
+        target: '.standings-card',
+        title: 'Lap-by-Lap Race Standings',
+        body: 'This panel shows the race order at your selected lap — positions, team colors, and gap to the leader. It updates dynamically as you change laps to let you replay the race.',
+        tip: 'Click any driver row to instantly load their telemetry as the primary driver. No need to find them in the dropdown.',
+        position: 'left',
+    },
+    {
+        target: '.driver-meta-card',
+        title: 'Comparison Summary Card',
+        body: 'A quick-glance card showing both drivers side-by-side — their position in the race, lap time, and team. This updates whenever you load a comparison to give you the headline numbers at a glance.',
+        position: 'left',
+    },
+    {
+        target: '.right-panel .chart-card',
+        title: 'Gear Trace',
+        body: 'The gear chart shows what gear each driver is in throughout the lap. Useful for spotting different racing lines — if one driver short-shifts or takes a corner in a higher gear, you\'ll see it here.',
+        position: 'left',
+    },
+    {
+        type: 'finish',
+        title: 'You\'re All Set!',
+        body: 'That\'s everything you need to dive into the data. Start by picking a season and race on the left panel — the rest will flow naturally.',
+    },
+];
+
+class Tutorial {
+    constructor() {
+        this._step = 0;
+        this._overlay = null;
+        this._card = null;
+        this._spotlight = null;
+        this._arrow = null;
+        this._onKey = this._handleKey.bind(this);
+    }
+
+    shouldShow() {
+        return !localStorage.getItem('f1dash_tutorial_done');
+    }
+
+    start() {
+        if (this._overlay) return;
+        this._buildDOM();
+        document.addEventListener('keydown', this._onKey);
+        requestAnimationFrame(() => this._show(0));
+    }
+
+    _buildDOM() {
+        this._overlay = document.createElement('div');
+        this._overlay.className = 'tutorial-overlay';
+        this._overlay.innerHTML = '<div class="tutorial-backdrop"></div>';
+
+        this._spotlight = document.createElement('div');
+        this._spotlight.className = 'tutorial-spotlight';
+        this._overlay.appendChild(this._spotlight);
+
+        this._arrow = document.createElement('div');
+        this._arrow.className = 'tutorial-arrow';
+        this._overlay.appendChild(this._arrow);
+
+        this._card = document.createElement('div');
+        this._card.className = 'tutorial-card';
+        this._overlay.appendChild(this._card);
+
+        document.body.appendChild(this._overlay);
+        requestAnimationFrame(() => this._overlay.classList.add('active'));
+    }
+
+    _show(idx) {
+        this._step = idx;
+        const step = TUTORIAL_STEPS[idx];
+        const total = TUTORIAL_STEPS.length;
+        const realSteps = total - 2; // exclude welcome & finish
+
+        const dots = Array.from({ length: total }, (_, i) => {
+            const cls = i < idx ? 'done' : i === idx ? 'active' : '';
+            return `<div class="tutorial-progress-dot ${cls}"></div>`;
+        }).join('');
+
+        // Re-trigger entrance animation
+        this._card.style.animation = 'none';
+        void this._card.offsetHeight;
+        this._card.style.animation = '';
+
+        if (step.type === 'welcome') {
+            this._spotlight.style.display = 'none';
+            this._arrow.style.display = 'none';
+            this._card.className = 'tutorial-card welcome';
+
+            const featureHTML = (step.features || []).map(f =>
+                `<div class="tutorial-feature-item"><i class="${f.icon}"></i><span>${f.text}</span></div>`
+            ).join('');
+
+            this._card.innerHTML = `
+                <div class="tutorial-welcome-icon"><i class="fa-solid fa-flag-checkered"></i></div>
+                <h3>${step.title}</h3>
+                <p class="tutorial-welcome-sub">${step.body}</p>
+                <div class="tutorial-features">${featureHTML}</div>
+                <div class="tutorial-progress">${dots}</div>
+                <div class="tutorial-actions">
+                    <button class="tutorial-btn tutorial-btn-skip" data-action="skip">Skip Tour</button>
+                    <button class="tutorial-btn tutorial-btn-next" data-action="next">Start Tour <i class="fa-solid fa-arrow-right" style="margin-left:6px;font-size:11px;"></i></button>
+                </div>
+                <div class="tutorial-key-hint">Navigate: <kbd>&larr;</kbd> <kbd>&rarr;</kbd> arrow keys &middot; <kbd>Esc</kbd> to skip</div>
+            `;
+        } else if (step.type === 'finish') {
+            this._spotlight.style.display = 'none';
+            this._arrow.style.display = 'none';
+            this._card.className = 'tutorial-card welcome';
+            this._card.innerHTML = `
+                <div class="tutorial-welcome-icon" style="background:var(--green);box-shadow:0 0 40px var(--green-glow),0 0 80px rgba(0,230,118,0.2);"><i class="fa-solid fa-check"></i></div>
+                <h3>${step.title}</h3>
+                <p class="tutorial-welcome-sub">${step.body}</p>
+                <div class="tutorial-progress">${dots}</div>
+                <div class="tutorial-actions">
+                    <button class="tutorial-btn tutorial-btn-back" data-action="back" style="margin-right:8px;"><i class="fa-solid fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>Back</button>
+                    <button class="tutorial-btn tutorial-btn-next" data-action="next" style="background:var(--green);box-shadow:0 0 20px var(--green-glow);">Get Started <i class="fa-solid fa-rocket" style="margin-left:6px;font-size:11px;"></i></button>
+                </div>
+            `;
+        } else {
+            this._spotlight.style.display = '';
+            this._arrow.style.display = '';
+            this._card.className = 'tutorial-card';
+
+            const stepNum = idx;
+            const tipHTML = step.tip
+                ? `<div class="tutorial-tip"><i class="fa-solid fa-lightbulb"></i><span>${step.tip}</span></div>`
+                : '';
+
+            this._card.innerHTML = `
+                <div class="tutorial-step-badge"><i class="fa-solid fa-location-dot"></i> Step ${stepNum} of ${realSteps}</div>
+                <h3>${step.title}</h3>
+                <p>${step.body}</p>
+                ${tipHTML}
+                <div class="tutorial-progress">${dots}</div>
+                <div class="tutorial-actions">
+                    <div>
+                        ${idx > 1 ? '<button class="tutorial-btn tutorial-btn-back" data-action="back"><i class="fa-solid fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>Back</button>' : ''}
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="tutorial-btn tutorial-btn-skip" data-action="skip">Skip</button>
+                        <button class="tutorial-btn tutorial-btn-next" data-action="next">Next <i class="fa-solid fa-arrow-right" style="margin-left:6px;font-size:11px;"></i></button>
+                    </div>
+                </div>
+            `;
+
+            this._positionSpotlight(step);
+        }
+
+        this._card.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', () => this._onAction(btn.dataset.action));
+        });
+    }
+
+    _positionSpotlight(step) {
+        const el = document.querySelector(step.target);
+        if (!el) {
+            this._spotlight.style.display = 'none';
+            this._arrow.style.display = 'none';
+            this._card.style.top = '50%';
+            this._card.style.left = '50%';
+            this._card.style.transform = 'translate(-50%,-50%)';
+            return;
+        }
+
+        const r = el.getBoundingClientRect();
+        const pad = 12;
+        this._spotlight.style.top = `${r.top - pad}px`;
+        this._spotlight.style.left = `${r.left - pad}px`;
+        this._spotlight.style.width = `${r.width + pad * 2}px`;
+        this._spotlight.style.height = `${r.height + pad * 2}px`;
+
+        const cardW = 380;
+        const gap = 24;
+        let top, left;
+
+        switch (step.position) {
+            case 'right':
+                top = r.top + r.height / 2 - 120;
+                left = r.right + gap + pad;
+                if (left + cardW > window.innerWidth - 16) {
+                    left = r.left - cardW - gap - pad;
+                }
+                break;
+            case 'left':
+                top = r.top + r.height / 2 - 120;
+                left = r.left - cardW - gap - pad;
+                if (left < 16) left = r.right + gap + pad;
+                break;
+            case 'bottom':
+                top = r.bottom + gap + pad;
+                left = r.left + r.width / 2 - cardW / 2;
+                break;
+            case 'top': {
+                const cardH = this._card.offsetHeight || 280;
+                top = r.top - cardH - gap - pad;
+                left = r.left + r.width / 2 - cardW / 2;
+                break;
+            }
+            default:
+                top = r.bottom + gap;
+                left = r.left;
+        }
+
+        const cardH = this._card.offsetHeight || 280;
+        top = Math.max(12, Math.min(top, window.innerHeight - cardH - 12));
+        left = Math.max(12, Math.min(left, window.innerWidth - cardW - 12));
+
+        this._card.style.top = `${top}px`;
+        this._card.style.left = `${left}px`;
+        this._card.style.transform = 'none';
+
+        this._positionArrow(step.position, r, pad, { top, left, w: cardW, h: cardH });
+    }
+
+    _positionArrow(pos, targetRect, pad, card) {
+        const a = this._arrow;
+        if (!a) return;
+        a.style.display = '';
+        a.style.width = '0';
+        a.style.height = '0';
+
+        const spotMidX = targetRect.left + targetRect.width / 2;
+        const spotMidY = targetRect.top + targetRect.height / 2;
+        const cardMidY = card.top + card.h / 2;
+        const cardMidX = card.left + card.w / 2;
+
+        switch (pos) {
+            case 'right': {
+                const x1 = targetRect.right + pad + 4;
+                const x2 = card.left - 4;
+                const y = Math.min(spotMidY, card.top + card.h - 20);
+                a.style.left = `${x1}px`;
+                a.style.top = `${y}px`;
+                a.style.width = `${Math.max(0, x2 - x1)}px`;
+                a.style.height = '2px';
+                a.style.background = 'linear-gradient(90deg, rgba(225,6,0,0.7), rgba(225,6,0,0.15))';
+                break;
+            }
+            case 'left': {
+                const x1 = card.left + card.w + 4;
+                const x2 = targetRect.left - pad - 4;
+                const y = Math.min(spotMidY, card.top + card.h - 20);
+                a.style.left = `${x1}px`;
+                a.style.top = `${y}px`;
+                a.style.width = `${Math.max(0, x2 - x1)}px`;
+                a.style.height = '2px';
+                a.style.background = 'linear-gradient(90deg, rgba(225,6,0,0.15), rgba(225,6,0,0.7))';
+                break;
+            }
+            case 'bottom': {
+                const y1 = targetRect.bottom + pad + 4;
+                const y2 = card.top - 4;
+                a.style.left = `${spotMidX}px`;
+                a.style.top = `${y1}px`;
+                a.style.width = '2px';
+                a.style.height = `${Math.max(0, y2 - y1)}px`;
+                a.style.background = 'linear-gradient(180deg, rgba(225,6,0,0.7), rgba(225,6,0,0.15))';
+                break;
+            }
+            case 'top': {
+                const y1 = card.top + card.h + 4;
+                const y2 = targetRect.top - pad - 4;
+                a.style.left = `${spotMidX}px`;
+                a.style.top = `${y1}px`;
+                a.style.width = '2px';
+                a.style.height = `${Math.max(0, y2 - y1)}px`;
+                a.style.background = 'linear-gradient(180deg, rgba(225,6,0,0.15), rgba(225,6,0,0.7))';
+                break;
+            }
+            default:
+                a.style.display = 'none';
+        }
+    }
+
+    _onAction(action) {
+        if (action === 'skip') return this._finish();
+        if (action === 'back' && this._step > 0) return this._show(this._step - 1);
+        if (action === 'next') {
+            if (this._step >= TUTORIAL_STEPS.length - 1) return this._finish();
+            this._show(this._step + 1);
+        }
+    }
+
+    _handleKey(e) {
+        if (e.key === 'Escape') this._finish();
+        else if (e.key === 'ArrowRight' || e.key === 'Enter') this._onAction('next');
+        else if (e.key === 'ArrowLeft') this._onAction('back');
+    }
+
+    _finish() {
+        localStorage.setItem('f1dash_tutorial_done', '1');
+        document.removeEventListener('keydown', this._onKey);
+        this._overlay.classList.remove('active');
+        setTimeout(() => { this._overlay.remove(); this._overlay = null; }, 350);
+    }
+}
+
+const _tutorial = new Tutorial();
+
 // Initialize the app when the DOM is loaded
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', async () => {
+    await initApp();
+    if (_tutorial.shouldShow()) {
+        setTimeout(() => _tutorial.start(), 600);
+    }
+});

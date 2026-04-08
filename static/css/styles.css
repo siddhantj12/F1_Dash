@@ -849,6 +849,7 @@ select, input { font-family: var(--font-body); }
 }
 .standing-row:last-child { border-bottom: none; }
 .standing-row:hover { background: var(--glass-hover); padding: 9px 6px; margin: 0 -6px; }
+.standing-row.active { background: rgba(225, 6, 0, 0.1); padding: 9px 6px; margin: 0 -6px; border-left: 2px solid var(--red); }
 .standing-position {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -1126,6 +1127,337 @@ select, input { font-family: var(--font-body); }
 
 /* Mobile toggle */
 .nav-toggle { display: none; background: transparent; border: none; color: var(--text-primary); font-size: 18px; }
+
+/* =========================================
+   ONBOARDING TUTORIAL
+   ========================================= */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  transition: opacity var(--t-normal);
+}
+.tutorial-overlay.active { pointer-events: auto; }
+
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.88);
+  transition: opacity var(--t-normal);
+  opacity: 0;
+}
+.tutorial-overlay.active .tutorial-backdrop { opacity: 1; }
+
+/* Bright spotlight cutout with animated glow ring */
+.tutorial-spotlight {
+  position: fixed;
+  z-index: 9999;
+  border-radius: var(--r-md);
+  border: 2px solid rgba(225, 6, 0, 0.7);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.88),
+    0 0 40px 8px rgba(225, 6, 0, 0.35),
+    0 0 80px 16px rgba(225, 6, 0, 0.15),
+    inset 0 0 30px 4px rgba(225, 6, 0, 0.08);
+  pointer-events: none;
+  transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: spotlight-pulse 2s ease-in-out infinite;
+}
+@keyframes spotlight-pulse {
+  0%, 100% {
+    border-color: rgba(225, 6, 0, 0.7);
+    box-shadow:
+      0 0 0 9999px rgba(0, 0, 0, 0.88),
+      0 0 40px 8px rgba(225, 6, 0, 0.35),
+      0 0 80px 16px rgba(225, 6, 0, 0.15),
+      inset 0 0 30px 4px rgba(225, 6, 0, 0.08);
+  }
+  50% {
+    border-color: rgba(255, 32, 24, 0.9);
+    box-shadow:
+      0 0 0 9999px rgba(0, 0, 0, 0.88),
+      0 0 50px 12px rgba(225, 6, 0, 0.45),
+      0 0 100px 24px rgba(225, 6, 0, 0.2),
+      inset 0 0 40px 6px rgba(225, 6, 0, 0.12);
+  }
+}
+
+/* Corner accents on spotlight */
+.tutorial-spotlight::before,
+.tutorial-spotlight::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--red-bright);
+  border-style: solid;
+}
+.tutorial-spotlight::before {
+  top: -2px; left: -2px;
+  border-width: 2px 0 0 2px;
+  border-radius: 4px 0 0 0;
+}
+.tutorial-spotlight::after {
+  bottom: -2px; right: -2px;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 4px 0;
+}
+
+.tutorial-card {
+  position: fixed;
+  z-index: 10000;
+  width: 380px;
+  background: linear-gradient(145deg, rgba(24, 24, 32, 0.98), rgba(12, 12, 16, 0.98));
+  border: 1px solid rgba(225, 6, 0, 0.2);
+  border-radius: var(--r-lg);
+  padding: 26px 28px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 16px 56px rgba(0,0,0,0.8),
+    0 0 1px rgba(225,6,0,0.3),
+    0 0 40px rgba(225,6,0,0.06);
+  transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  animation: card-enter 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tutorial-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 16px; right: 16px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--red), transparent);
+  opacity: 0.8;
+  border-radius: 1px;
+}
+
+/* Connector arrow from card to spotlight */
+.tutorial-arrow {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tutorial-arrow::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(225, 6, 0, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 12px 3px rgba(225, 6, 0, 0.5);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tutorial-step-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--red);
+  margin-bottom: 14px;
+  background: rgba(225, 6, 0, 0.08);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(225, 6, 0, 0.15);
+}
+.tutorial-step-badge i { font-size: 11px; }
+
+.tutorial-card h3 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+
+.tutorial-card p {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+/* Tip box inside card */
+.tutorial-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(0, 230, 118, 0.05);
+  border: 1px solid rgba(0, 230, 118, 0.12);
+  border-radius: var(--r-sm);
+  margin-bottom: 18px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(0, 230, 118, 0.85);
+}
+.tutorial-tip i {
+  margin-top: 2px;
+  font-size: 13px;
+  flex-shrink: 0;
+  color: var(--green);
+}
+
+.tutorial-progress {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 18px;
+}
+.tutorial-progress-dot {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+  transition: background var(--t-fast), box-shadow var(--t-fast);
+}
+.tutorial-progress-dot.active {
+  background: var(--red);
+  box-shadow: 0 0 8px rgba(225, 6, 0, 0.5);
+}
+.tutorial-progress-dot.done { background: rgba(225,6,0,0.35); }
+
+.tutorial-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tutorial-btn {
+  padding: 9px 20px;
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: all var(--t-fast);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.tutorial-btn-next {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(225,6,0,0.35);
+}
+.tutorial-btn-next:hover {
+  background: var(--red-bright);
+  box-shadow: 0 0 30px rgba(225,6,0,0.55);
+  transform: translateY(-1px);
+}
+.tutorial-btn-skip {
+  background: transparent;
+  color: var(--text-tertiary);
+  padding: 9px 14px;
+}
+.tutorial-btn-skip:hover { color: var(--text-secondary); }
+.tutorial-btn-back {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+.tutorial-btn-back:hover {
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text-primary);
+}
+
+.tutorial-key-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.tutorial-key-hint kbd {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* Welcome screen — centered, larger */
+.tutorial-card.welcome {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 440px;
+  text-align: center;
+}
+.tutorial-card.welcome h3 { font-size: 28px; margin-bottom: 8px; }
+.tutorial-card.welcome .tutorial-welcome-sub {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+.tutorial-card.welcome .tutorial-actions { justify-content: center; gap: 12px; }
+.tutorial-welcome-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: var(--red);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  box-shadow: 0 0 40px var(--red-glow), 0 0 80px rgba(225,6,0,0.2);
+  animation: icon-glow 2.5s ease-in-out infinite;
+}
+@keyframes icon-glow {
+  0%, 100% { box-shadow: 0 0 40px var(--red-glow), 0 0 80px rgba(225,6,0,0.2); }
+  50% { box-shadow: 0 0 60px var(--red-glow), 0 0 120px rgba(225,6,0,0.3); transform: scale(1.03); }
+}
+
+/* Feature list inside welcome */
+.tutorial-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  margin: 16px 0 20px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--r-md);
+}
+.tutorial-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.tutorial-feature-item i {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.tutorial-feature-item:nth-child(1) i { background: rgba(225,6,0,0.12); color: var(--red); }
+.tutorial-feature-item:nth-child(2) i { background: rgba(54,113,198,0.12); color: var(--redbull); }
+.tutorial-feature-item:nth-child(3) i { background: rgba(0,230,118,0.1); color: var(--green); }
+.tutorial-feature-item:nth-child(4) i { background: rgba(255,128,0,0.1); color: var(--mclaren); }
 
 /* =========================================
    RESPONSIVE
