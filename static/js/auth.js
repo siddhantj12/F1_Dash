@@ -16,16 +16,27 @@
 
 import { createAuth0Client } from 'https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.1.3/dist/auth0-spa-js.production.esm.js';
 
-// These are read from the global window.AUTH0_CONFIG injected by index.html
-const { domain, clientId, audience, redirectUri } = window.AUTH0_CONFIG || {};
-
 let _client = null;
+let _cfg = null; // resolved lazily after /api/auth0-config fetch completes
+
+async function _getConfig() {
+  if (_cfg) return _cfg;
+  // Wait up to 2s for index.html's fetch('/api/auth0-config') to populate window.AUTH0_CONFIG
+  for (let i = 0; i < 20; i++) {
+    const c = window.AUTH0_CONFIG || {};
+    if (c.domain && c.clientId) { _cfg = c; return _cfg; }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return window.AUTH0_CONFIG || {};
+}
 
 const Auth = {
   isAuthenticated: false,
   user: null,
 
   async init() {
+    const { domain, clientId, redirectUri } = await _getConfig();
+
     if (!domain || !clientId) {
       console.warn('[Auth] AUTH0_CONFIG not set — auth disabled');
       window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null, isAuthenticated: false } }));
@@ -73,8 +84,9 @@ const Auth = {
     }));
   },
 
-  login() {
+  async login() {
     if (!_client) { console.warn('[Auth] client not initialised'); return; }
+    const { redirectUri } = await _getConfig();
     _client.loginWithRedirect({
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
