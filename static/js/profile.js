@@ -68,6 +68,31 @@ const FALLBACK_TEAMS = [
 
 let _profile = null;
 
+// ─── Guest (localStorage) profile ────────────────────────────────────────────
+
+const GUEST_KEY = 'f1dash_guest_prefs';
+
+function _loadGuestProfile() {
+  try {
+    const raw = localStorage.getItem(GUEST_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function _saveGuestProfile(prefs) {
+  const existing = _loadGuestProfile() || {};
+  const updated = {
+    ...existing,
+    ...prefs,
+    is_guest: true,
+    display_name: 'F1 Fan',
+    onboarding_complete: prefs.onboarding_complete ?? existing.onboarding_complete ?? false,
+  };
+  localStorage.setItem(GUEST_KEY, JSON.stringify(updated));
+  return updated;
+}
+
 // ─── Driver photo helpers ─────────────────────────────────────────────────────
 
 function _driverPhotoUrl(driverName) {
@@ -98,9 +123,12 @@ function _updateSidebarFooter(profile) {
     if (roleEl) roleEl.textContent = 'Race Analyst';
     if (avatarEl) avatarEl.textContent = 'F1';
     if (profileBtn) {
-      profileBtn.innerHTML = 'Sign In';
+      profileBtn.innerHTML = '<i class="fa-solid fa-user"></i>';
       profileBtn.classList.add('sign-in-btn');
-      profileBtn.onclick = () => Auth.login();
+      profileBtn.title = 'Pick your driver';
+      profileBtn.onclick = () => {
+        document.querySelector('[data-target="garage-view"]')?.click();
+      };
     }
     return;
   }
@@ -128,11 +156,20 @@ function _updateSidebarFooter(profile) {
   }
 
   if (profileBtn) {
-    profileBtn.innerHTML = initial;
+    profileBtn.classList.remove('sign-in-btn');
+    profileBtn.innerHTML = driver
+      ? driver.code.slice(0, 2).toUpperCase()
+      : initial;
     profileBtn.style.background = teamColor;
-    profileBtn.title = profile.display_name || '';
+    profileBtn.title = profile.is_guest
+      ? `${driver ? driver.name : 'F1 Fan'} · Click to change`
+      : (profile.display_name || '');
     profileBtn.onclick = () => {
-      if (confirm('Sign out?')) Auth.logout();
+      if (profile.is_guest) {
+        Profile.openOnboarding();
+      } else if (confirm('Sign out?')) {
+        Auth.logout();
+      }
     };
   }
 }
@@ -170,7 +207,19 @@ const Profile = {
 
   async savePreferences({ driverCode, teamId, complete = true }) {
     const token = await Auth.getToken();
-    if (!token) return;
+
+    // Guest mode: no auth token → save to localStorage
+    if (!token) {
+      const guest = _saveGuestProfile({
+        favorite_driver_code: driverCode || null,
+        favorite_team_id: teamId || null,
+        onboarding_complete: complete,
+      });
+      _profile = guest;
+      window.userProfile = _profile;
+      _updateSidebarFooter(_profile);
+      return _profile;
+    }
 
     const body = {
       favorite_driver_code: driverCode || null,
@@ -191,6 +240,10 @@ const Profile = {
     window.userProfile = _profile;
     _updateSidebarFooter(_profile);
     return _profile;
+  },
+
+  openOnboarding() {
+    return _showOnboardingModal();
   },
 };
 
@@ -379,6 +432,7 @@ async function _showOnboardingModal() {
         complete: true,
       });
       _closeModal();
+      window.dispatchEvent(new CustomEvent('profile:updated', { detail: { profile: _profile } }));
       // Navigate to My Garage
       const garageNav = document.querySelector('[data-target="garage-view"]');
       garageNav?.click();
@@ -411,8 +465,11 @@ window.addEventListener('auth:ready', ({ detail }) => {
   if (detail.isAuthenticated) {
     Profile.load();
   } else {
-    window.userProfile = null;
-    _updateSidebarFooter(null);
+    // Load guest prefs from localStorage if available
+    const guest = _loadGuestProfile();
+    _profile = guest || null;
+    window.userProfile = _profile;
+    _updateSidebarFooter(_profile);
   }
 });
 

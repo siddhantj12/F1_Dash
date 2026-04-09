@@ -11,7 +11,7 @@
  * Anonymous / no-favorite state: CTA to sign in or pick a driver.
  */
 
-import { TEAM_COLORS, FALLBACK_DRIVERS } from '/static/js/profile.js';
+import Profile, { TEAM_COLORS, FALLBACK_DRIVERS } from '/static/js/profile.js';
 import { RACES_2026 } from '/static/js/calendar.js';
 
 // Points lookup by finishing position
@@ -26,16 +26,16 @@ function _renderAnonymous() {
   if (!el) return;
   el.innerHTML = `
     <div class="garage-anon">
-      <div class="garage-anon-icon"><i class="fa-solid fa-garage"></i></div>
-      <h2>Your Garage is empty</h2>
-      <p>Sign in and pick your favourite driver to unlock a personalised season view.</p>
-      <button class="garage-anon-btn" id="garage-signin-btn">
-        <i class="fa-brands fa-google"></i> Sign In
+      <div class="garage-anon-icon"><i class="fa-solid fa-flag-checkered"></i></div>
+      <h2>Pick Your Driver</h2>
+      <p>Choose your favourite driver to track their 2026 season — no account needed.</p>
+      <button class="garage-anon-btn" id="garage-pick-driver-btn">
+        <i class="fa-solid fa-user-plus"></i> Pick a Driver
       </button>
     </div>
   `;
-  document.getElementById('garage-signin-btn')?.addEventListener('click', () => {
-    import('/static/js/auth.js').then(m => m.default.login());
+  document.getElementById('garage-pick-driver-btn')?.addEventListener('click', () => {
+    Profile.openOnboarding();
   });
 }
 
@@ -51,10 +51,7 @@ function _renderNoFavorite() {
     </div>
   `;
   document.getElementById('garage-pick-btn')?.addEventListener('click', () => {
-    // Trigger onboarding by temporarily resetting onboarding_complete
-    import('/static/js/profile.js').then(m => {
-      m.default.savePreferences({ driverCode: null, teamId: null, complete: false });
-    });
+    Profile.openOnboarding();
   });
 }
 
@@ -274,10 +271,14 @@ window.addEventListener('view:activated', ({ detail }) => {
   if (detail.viewId === 'garage-view') renderGarage();
 });
 
-// Re-render if profile loads while garage is already active
+// Re-render if profile loads or updates while garage is already active
 window.addEventListener('auth:ready', () => {
   const garageView = document.getElementById('garage-view');
   if (garageView?.classList.contains('active')) renderGarage();
+});
+
+window.addEventListener('profile:updated', () => {
+  renderGarage();
 });
 
 export { renderGarage };
