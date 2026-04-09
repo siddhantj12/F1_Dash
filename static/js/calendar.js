@@ -95,7 +95,10 @@ function _initGlobe(containerId) {
   const w = el.clientWidth  || el.offsetWidth  || 600;
   const h = el.clientHeight || el.offsetHeight || 600;
 
-  const globe = Globe({ animateIn: true })(el)
+  // waitForGlobeReady: wait for earth + sky textures before first paint (avoids black sphere).
+  // onGlobeReady + resumeAnimation: globe.gl may pause the loop via IntersectionObserver while
+  // the canvas is settling; resume after the globe is actually on the scene.
+  const globe = Globe({ animateIn: false, waitForGlobeReady: true })(el)
     .width(w).height(h)
     // Globe appearance — dark with subtle blue tint, no atmosphere glow needed
     .globeImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/earth-night.jpg')
@@ -136,29 +139,27 @@ function _initGlobe(containerId) {
       </div>
     `)
     // Click on pin
-    .onPointClick(r => _selectRace(r.round, false));
+    .onPointClick(r => _selectRace(r.round, false))
+    .onGlobeReady(() => {
+      const box = document.getElementById(containerId);
+      if (box) globe.width(box.clientWidth || w).height(box.clientHeight || h);
 
-  // Force correct size and kick the render loop.
-  // Globe.gl gates animation via IntersectionObserver — if the element isn't intersecting
-  // (e.g. inside an iframe or hidden view) it never starts. Poll until a pixel is drawn.
-  setTimeout(() => {
-    globe.width(el.clientWidth || w).height(el.clientHeight || h);
-    globe.resumeAnimation();
+      // globe.gl gates its loop via IntersectionObserver — bypass it entirely by
+      // driving Three.js's own setAnimationLoop directly. This always renders
+      // regardless of iframe/tab visibility.
+      const renderer = globe.renderer();
+      const scene    = globe.scene();
+      const camera   = globe.camera();
+      if (!renderer || !scene || !camera) { globe.resumeAnimation(); return; }
 
-    // Poll for up to 3s; once a non-black pixel appears, stop
-    let attempts = 0;
-    const poll = setInterval(() => {
-      globe.resumeAnimation();
-      const canvas = el.querySelector('canvas');
-      const gl2 = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
-      if (gl2) {
-        const px = new Uint8Array(4);
-        gl2.readPixels(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1, gl2.RGBA, gl2.UNSIGNED_BYTE, px);
-        if (px[0] > 0 || px[1] > 0 || px[2] > 0) { clearInterval(poll); return; }
-      }
-      if (++attempts > 15) clearInterval(poll);
-    }, 200);
-  }, 100);
+      globe.pauseAnimation(); // stop globe.gl's loop to avoid double-rendering
+      renderer.setAnimationLoop(() => {
+        globe.controls().update();
+        renderer.render(scene, camera);
+      });
+      // Store stopper on the element so we can clean up on nav away
+      el._stopGlobeLoop = () => renderer.setAnimationLoop(null);
+    });
 
   // Initial auto-rotate
   globe.controls().autoRotate = true;
@@ -320,9 +321,17 @@ window.addEventListener('resize', _resizeGlobe);
 window.addEventListener('view:activated', ({ detail }) => {
   if (detail.viewId === 'calendar-view') {
     renderCalendar();
-  } else {
-    // Pause auto-rotate when not in view to save resources
-    if (_globe) _globe.controls().autoRotate = false;
+    // After layout + globe init, ensure the loop wasn't left paused (IntersectionObserver / tab timing).
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (!_globe) return;
+        const box = document.getElementById('cal2-globe');
+        if (box) _globe.width(box.clientWidth).height(box.clientHeight);
+        _globe.resumeAnimation?.();
+      }, 320);
+    });
+  } else if (_globe) {
+    _globe.controls().autoRotate = false;
   }
 });
 
