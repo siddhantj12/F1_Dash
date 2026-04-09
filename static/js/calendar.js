@@ -11,30 +11,30 @@
  */
 
 const RACES_2026 = [
-  { round:1,  name:'Australian Grand Prix',    short:'Australia',     circuit:'Albert Park',               city:'Melbourne',    country:'Australia',   flag:'🇦🇺', date:'2026-03-15', lat:-37.8497, lng:144.9680 },
-  { round:2,  name:'Chinese Grand Prix',        short:'China',         circuit:'Shanghai International',    city:'Shanghai',     country:'China',       flag:'🇨🇳', date:'2026-03-22', lat:31.3389,  lng:121.2198 },
-  { round:3,  name:'Japanese Grand Prix',       short:'Japan',         circuit:'Suzuka Circuit',            city:'Suzuka',       country:'Japan',       flag:'🇯🇵', date:'2026-04-05', lat:34.8431,  lng:136.5414 },
-  { round:4,  name:'Bahrain Grand Prix',        short:'Bahrain',       circuit:'Bahrain International',     city:'Sakhir',       country:'Bahrain',     flag:'🇧🇭', date:'2026-04-19', lat:26.0325,  lng:50.5106,  suspended:true },
-  { round:5,  name:'Saudi Arabian Grand Prix',  short:'Saudi Arabia',  circuit:'Jeddah Corniche Circuit',   city:'Jeddah',       country:'Saudi Arabia',flag:'🇸🇦', date:'2026-04-26', lat:21.6319,  lng:39.1044,  suspended:true },
-  { round:6,  name:'Miami Grand Prix',          short:'Miami',         circuit:'Miami International',       city:'Miami',        country:'USA',         flag:'🇺🇸', date:'2026-05-10', lat:25.9581,  lng:-80.2389 },
-  { round:7,  name:'Emilia Romagna Grand Prix', short:'Imola',         circuit:'Autodromo Enzo e Dino Ferrari', city:'Imola',    country:'Italy',       flag:'🇮🇹', date:'2026-05-24', lat:44.3439,  lng:11.7167  },
-  { round:8,  name:'Monaco Grand Prix',         short:'Monaco',        circuit:'Circuit de Monaco',         city:'Monaco',       country:'Monaco',      flag:'🇲🇨', date:'2026-05-31', lat:43.7347,  lng:7.4206   },
-  { round:9,  name:'Spanish Grand Prix',        short:'Spain',         circuit:'Circuit de Barcelona-Catalunya', city:'Barcelona', country:'Spain',    flag:'🇪🇸', date:'2026-06-14', lat:41.5700,  lng:2.2611   },
-  { round:10, name:'Canadian Grand Prix',       short:'Canada',        circuit:'Circuit Gilles Villeneuve', city:'Montreal',     country:'Canada',      flag:'🇨🇦', date:'2026-06-21', lat:45.5000,  lng:-73.5228 },
-  { round:11, name:'Austrian Grand Prix',       short:'Austria',       circuit:'Red Bull Ring',             city:'Spielberg',    country:'Austria',     flag:'🇦🇹', date:'2026-07-05', lat:47.2197,  lng:14.7647  },
-  { round:12, name:'British Grand Prix',        short:'Britain',       circuit:'Silverstone Circuit',       city:'Silverstone',  country:'UK',          flag:'🇬🇧', date:'2026-07-12', lat:52.0786,  lng:-1.0169  },
-  { round:13, name:'Belgian Grand Prix',        short:'Belgium',       circuit:'Circuit de Spa-Francorchamps', city:'Spa',       country:'Belgium',     flag:'🇧🇪', date:'2026-07-26', lat:50.4372,  lng:5.9714   },
-  { round:14, name:'Hungarian Grand Prix',      short:'Hungary',       circuit:'Hungaroring',               city:'Budapest',     country:'Hungary',     flag:'🇭🇺', date:'2026-08-02', lat:47.5789,  lng:19.2486  },
-  { round:15, name:'Dutch Grand Prix',          short:'Netherlands',   circuit:'Circuit Zandvoort',         city:'Zandvoort',    country:'Netherlands', flag:'🇳🇱', date:'2026-08-30', lat:52.3888,  lng:4.5409   },
-  { round:16, name:'Italian Grand Prix',        short:'Italy',         circuit:'Autodromo Nazionale Monza', city:'Monza',        country:'Italy',       flag:'🇮🇹', date:'2026-09-06', lat:45.6156,  lng:9.2811   },
-  { round:17, name:'Azerbaijan Grand Prix',     short:'Azerbaijan',    circuit:'Baku City Circuit',         city:'Baku',         country:'Azerbaijan',  flag:'🇦🇿', date:'2026-09-20', lat:40.3725,  lng:49.8533  },
-  { round:18, name:'Singapore Grand Prix',      short:'Singapore',     circuit:'Marina Bay Street Circuit', city:'Singapore',    country:'Singapore',   flag:'🇸🇬', date:'2026-09-27', lat:1.2914,   lng:103.8644 },
-  { round:19, name:'United States Grand Prix',  short:'USA (Austin)',  circuit:'Circuit of the Americas',   city:'Austin',       country:'USA',         flag:'🇺🇸', date:'2026-10-18', lat:30.1328,  lng:-97.6411 },
-  { round:20, name:'Mexico City Grand Prix',    short:'Mexico City',   circuit:'Autodromo Hermanos Rodriguez', city:'Mexico City', country:'Mexico',    flag:'🇲🇽', date:'2026-10-25', lat:19.4042,  lng:-99.0907 },
-  { round:21, name:'São Paulo Grand Prix',      short:'São Paulo',     circuit:'Autodromo Jose Carlos Pace', city:'São Paulo',   country:'Brazil',      flag:'🇧🇷', date:'2026-11-08', lat:-23.7036, lng:-46.6997 },
-  { round:22, name:'Las Vegas Grand Prix',      short:'Las Vegas',     circuit:'Las Vegas Strip Circuit',   city:'Las Vegas',    country:'USA',         flag:'🇺🇸', date:'2026-11-21', lat:36.1147,  lng:-115.1728},
-  { round:23, name:'Qatar Grand Prix',          short:'Qatar',         circuit:'Lusail International',      city:'Lusail',       country:'Qatar',       flag:'🇶🇦', date:'2026-11-29', lat:25.4900,  lng:51.4542  },
-  { round:24, name:'Abu Dhabi Grand Prix',      short:'Abu Dhabi',     circuit:'Yas Marina Circuit',        city:'Abu Dhabi',    country:'UAE',         flag:'🇦🇪', date:'2026-12-06', lat:24.4672,  lng:54.6031  },
+  { round:1,  name:'Australian Grand Prix',    short:'Australia',    circuit:'Albert Park Circuit',               city:'Melbourne',    country:'Australia',    flag:'🇦🇺', date:'2026-03-15', lat:-37.8497, lng:144.9680, km:'5.278', laps:58, turns:16, drs:4, record:'1:20.235', recordBy:'Charles Leclerc',       recordYear:2022, trackKey:'Australia' },
+  { round:2,  name:'Chinese Grand Prix',        short:'China',        circuit:'Shanghai International Circuit',    city:'Shanghai',     country:'China',        flag:'🇨🇳', date:'2026-03-22', lat:31.3389,  lng:121.2198, km:'5.451', laps:56, turns:16, drs:2, record:'1:32.238', recordBy:'Michael Schumacher',    recordYear:2004, trackKey:'China' },
+  { round:3,  name:'Japanese Grand Prix',       short:'Japan',        circuit:'Suzuka Circuit',                    city:'Suzuka',       country:'Japan',        flag:'🇯🇵', date:'2026-04-05', lat:34.8431,  lng:136.5414, km:'5.807', laps:53, turns:18, drs:1, record:'1:30.983', recordBy:'Lewis Hamilton',        recordYear:2019, trackKey:'Japan' },
+  { round:4,  name:'Bahrain Grand Prix',        short:'Bahrain',      circuit:'Bahrain International Circuit',     city:'Sakhir',       country:'Bahrain',      flag:'🇧🇭', date:'2026-04-19', lat:26.0325,  lng:50.5106,  km:'5.412', laps:57, turns:15, drs:3, record:'1:31.447', recordBy:'Pedro de la Rosa',      recordYear:2005, trackKey:'Bahrain',  suspended:true },
+  { round:5,  name:'Saudi Arabian Grand Prix',  short:'Saudi Arabia', circuit:'Jeddah Corniche Circuit',           city:'Jeddah',       country:'Saudi Arabia', flag:'🇸🇦', date:'2026-04-26', lat:21.6319,  lng:39.1044,  km:'6.174', laps:50, turns:27, drs:3, record:'1:28.200', recordBy:'Charles Leclerc',       recordYear:2022, trackKey:'SaudiArabia', suspended:true },
+  { round:6,  name:'Miami Grand Prix',          short:'Miami',        circuit:'Miami International Autodrome',     city:'Miami',        country:'USA',          flag:'🇺🇸', date:'2026-05-10', lat:25.9581,  lng:-80.2389, km:'5.412', laps:57, turns:19, drs:3, record:'1:29.708', recordBy:'Max Verstappen',        recordYear:2023, trackKey:'Miami' },
+  { round:7,  name:'Emilia Romagna Grand Prix', short:'Imola',        circuit:'Autodromo Enzo e Dino Ferrari',     city:'Imola',        country:'Italy',        flag:'🇮🇹', date:'2026-05-24', lat:44.3439,  lng:11.7167,  km:'4.909', laps:63, turns:19, drs:1, record:'1:15.484', recordBy:'Max Verstappen',        recordYear:2022, trackKey:'EmiliaRomagna' },
+  { round:8,  name:'Monaco Grand Prix',         short:'Monaco',       circuit:'Circuit de Monaco',                 city:'Monte Carlo',  country:'Monaco',       flag:'🇲🇨', date:'2026-05-31', lat:43.7347,  lng:7.4206,   km:'3.337', laps:78, turns:19, drs:1, record:'1:10.166', recordBy:'Charles Leclerc',       recordYear:2021, trackKey:'Monaco' },
+  { round:9,  name:'Spanish Grand Prix',        short:'Spain',        circuit:'Circuit de Barcelona-Catalunya',    city:'Barcelona',    country:'Spain',        flag:'🇪🇸', date:'2026-06-14', lat:41.5700,  lng:2.2611,   km:'4.675', laps:66, turns:16, drs:3, record:'1:16.330', recordBy:'Max Verstappen',        recordYear:2023, trackKey:'Spain' },
+  { round:10, name:'Canadian Grand Prix',       short:'Canada',       circuit:'Circuit Gilles Villeneuve',         city:'Montreal',     country:'Canada',       flag:'🇨🇦', date:'2026-06-21', lat:45.5000,  lng:-73.5228, km:'4.361', laps:70, turns:14, drs:2, record:'1:13.078', recordBy:'Valtteri Bottas',       recordYear:2019, trackKey:'Canada' },
+  { round:11, name:'Austrian Grand Prix',       short:'Austria',      circuit:'Red Bull Ring',                     city:'Spielberg',    country:'Austria',      flag:'🇦🇹', date:'2026-07-05', lat:47.2197,  lng:14.7647,  km:'4.318', laps:71, turns:10, drs:3, record:'1:05.619', recordBy:'Carlos Sainz',          recordYear:2020, trackKey:'Austria' },
+  { round:12, name:'British Grand Prix',        short:'Britain',      circuit:'Silverstone Circuit',               city:'Silverstone',  country:'UK',           flag:'🇬🇧', date:'2026-07-12', lat:52.0786,  lng:-1.0169,  km:'5.891', laps:52, turns:18, drs:2, record:'1:27.097', recordBy:'Max Verstappen',        recordYear:2020, trackKey:'Britain' },
+  { round:13, name:'Belgian Grand Prix',        short:'Belgium',      circuit:'Circuit de Spa-Francorchamps',      city:'Spa',          country:'Belgium',      flag:'🇧🇪', date:'2026-07-26', lat:50.4372,  lng:5.9714,   km:'7.004', laps:44, turns:19, drs:2, record:'1:46.286', recordBy:'Valtteri Bottas',       recordYear:2018, trackKey:'Belgium' },
+  { round:14, name:'Hungarian Grand Prix',      short:'Hungary',      circuit:'Hungaroring',                       city:'Budapest',     country:'Hungary',      flag:'🇭🇺', date:'2026-08-02', lat:47.5789,  lng:19.2486,  km:'4.381', laps:70, turns:14, drs:2, record:'1:16.627', recordBy:'Lewis Hamilton',        recordYear:2020, trackKey:'Hungary' },
+  { round:15, name:'Dutch Grand Prix',          short:'Netherlands',  circuit:'Circuit Zandvoort',                 city:'Zandvoort',    country:'Netherlands',  flag:'🇳🇱', date:'2026-08-30', lat:52.3888,  lng:4.5409,   km:'4.259', laps:72, turns:14, drs:2, record:'1:11.097', recordBy:'Max Verstappen',        recordYear:2021, trackKey:'Netherlands' },
+  { round:16, name:'Italian Grand Prix',        short:'Italy',        circuit:'Autodromo Nazionale Monza',         city:'Monza',        country:'Italy',        flag:'🇮🇹', date:'2026-09-06', lat:45.6156,  lng:9.2811,   km:'5.793', laps:53, turns:11, drs:4, record:'1:21.046', recordBy:'Rubens Barrichello',    recordYear:2004, trackKey:'Italy' },
+  { round:17, name:'Azerbaijan Grand Prix',     short:'Azerbaijan',   circuit:'Baku City Circuit',                 city:'Baku',         country:'Azerbaijan',   flag:'🇦🇿', date:'2026-09-20', lat:40.3725,  lng:49.8533,  km:'6.003', laps:51, turns:20, drs:2, record:'1:43.009', recordBy:'Charles Leclerc',       recordYear:2019, trackKey:'Azerbaijan' },
+  { round:18, name:'Singapore Grand Prix',      short:'Singapore',    circuit:'Marina Bay Street Circuit',         city:'Singapore',    country:'Singapore',    flag:'🇸🇬', date:'2026-09-27', lat:1.2914,   lng:103.8644, km:'4.940', laps:62, turns:23, drs:3, record:'1:35.867', recordBy:'Charles Leclerc',       recordYear:2023, trackKey:'Singapore' },
+  { round:19, name:'United States Grand Prix',  short:'USA',          circuit:'Circuit of the Americas',           city:'Austin',       country:'USA',          flag:'🇺🇸', date:'2026-10-18', lat:30.1328,  lng:-97.6411, km:'5.513', laps:56, turns:20, drs:2, record:'1:36.169', recordBy:'Charles Leclerc',       recordYear:2019, trackKey:'UnitedStates' },
+  { round:20, name:'Mexico City Grand Prix',    short:'Mexico City',  circuit:'Autodromo Hermanos Rodriguez',      city:'Mexico City',  country:'Mexico',       flag:'🇲🇽', date:'2026-10-25', lat:19.4042,  lng:-99.0907, km:'4.304', laps:71, turns:17, drs:2, record:'1:17.774', recordBy:'Valtteri Bottas',       recordYear:2021, trackKey:'Mexico' },
+  { round:21, name:'São Paulo Grand Prix',      short:'São Paulo',    circuit:'Autodromo Jose Carlos Pace',        city:'São Paulo',    country:'Brazil',       flag:'🇧🇷', date:'2026-11-08', lat:-23.7036, lng:-46.6997, km:'4.309', laps:71, turns:15, drs:2, record:'1:10.540', recordBy:'Valtteri Bottas',       recordYear:2018, trackKey:'Brazil' },
+  { round:22, name:'Las Vegas Grand Prix',      short:'Las Vegas',    circuit:'Las Vegas Strip Circuit',           city:'Las Vegas',    country:'USA',          flag:'🇺🇸', date:'2026-11-21', lat:36.1147,  lng:-115.1728,km:'6.201', laps:50, turns:17, drs:2, record:'1:35.490', recordBy:'Charles Leclerc',       recordYear:2023, trackKey:'LasVegas' },
+  { round:23, name:'Qatar Grand Prix',          short:'Qatar',        circuit:'Lusail International Circuit',      city:'Lusail',       country:'Qatar',        flag:'🇶🇦', date:'2026-11-29', lat:25.4900,  lng:51.4542,  km:'5.419', laps:57, turns:16, drs:2, record:'1:24.319', recordBy:'Max Verstappen',        recordYear:2023, trackKey:'Qatar' },
+  { round:24, name:'Abu Dhabi Grand Prix',      short:'Abu Dhabi',    circuit:'Yas Marina Circuit',                city:'Abu Dhabi',    country:'UAE',          flag:'🇦🇪', date:'2026-12-06', lat:24.4672,  lng:54.6031,  km:'5.281', laps:58, turns:16, drs:2, record:'1:26.103', recordBy:'Max Verstappen',        recordYear:2021, trackKey:'AbuDhabi' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -102,11 +102,11 @@ function _initGlobe(containerId) {
   // waitForGlobeReady:false — don't wait for textures; start loop right away
   const globe = Globe({ animateIn: false, waitForGlobeReady: false })(el)
     .width(w).height(h)
-    .globeImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/earth-night.jpg')
+    .globeImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/earth-blue-marble.jpg')
     .backgroundImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/night-sky.png')
     .showAtmosphere(true)
-    .atmosphereColor('#1a1a3e')
-    .atmosphereAltitude(0.15)
+    .atmosphereColor('#4488ff')
+    .atmosphereAltitude(0.25)
     .pointsData(RACES_2026)
     .pointLat('lat')
     .pointLng('lng')
@@ -178,12 +178,57 @@ function _initGlobe(containerId) {
   return globe;
 }
 
+// ─── Track info panel ─────────────────────────────────────────────────────────
+
+function _renderTrackPanel(race) {
+  const existing = document.getElementById('cal2-track-panel');
+  if (existing) existing.remove();
+  if (!race) return;
+
+  const status = _raceStatus(race);
+  const statusLabel = race.suspended ? 'Suspended' : status === 'completed' ? 'Completed' : status === 'live' ? 'Live Now' : 'Upcoming';
+  const statusColor = race.suspended ? '#FF6B00' : status === 'completed' ? '#555568' : status === 'live' ? '#00E676' : '#9090A8';
+
+  const panel = document.createElement('div');
+  panel.id = 'cal2-track-panel';
+  panel.innerHTML = `
+    <div class="ctp-header">
+      <span class="ctp-flag">${race.flag}</span>
+      <div class="ctp-title-wrap">
+        <div class="ctp-name">${race.name}</div>
+        <div class="ctp-circuit">${race.circuit} · ${race.city}, ${race.country}</div>
+      </div>
+      <span class="ctp-status" style="color:${statusColor};border-color:${statusColor}33;background:${statusColor}11">${statusLabel}</span>
+    </div>
+    <div class="ctp-stats">
+      <div class="ctp-stat"><div class="ctp-stat-val">${race.km} km</div><div class="ctp-stat-label">Circuit Length</div></div>
+      <div class="ctp-stat"><div class="ctp-stat-val">${race.laps}</div><div class="ctp-stat-label">Laps</div></div>
+      <div class="ctp-stat"><div class="ctp-stat-val">${(race.km * race.laps).toFixed(1)} km</div><div class="ctp-stat-label">Race Distance</div></div>
+      <div class="ctp-stat"><div class="ctp-stat-val">${race.turns}</div><div class="ctp-stat-label">Corners</div></div>
+      <div class="ctp-stat"><div class="ctp-stat-val">${race.drs}</div><div class="ctp-stat-label">DRS Zones</div></div>
+      <div class="ctp-stat ctp-stat--record">
+        <div class="ctp-stat-val">${race.record}</div>
+        <div class="ctp-stat-label">Lap Record · ${race.recordBy.split(' ').pop()} ${race.recordYear}</div>
+      </div>
+    </div>
+  `;
+
+  const globePanel = document.querySelector('.cal2-globe-panel');
+  if (globePanel) {
+    globePanel.appendChild(panel);
+    requestAnimationFrame(() => panel.classList.add('ctp-visible'));
+  }
+}
+
 // ─── Select + fly ─────────────────────────────────────────────────────────────
 
 function _selectRace(round, flyGlobe = true) {
   _selectedRound = round;
   const race = RACES_2026.find(r => r.round === round);
   if (!race) return;
+
+  // Show track info panel
+  _renderTrackPanel(race);
 
   // Highlight card
   document.querySelectorAll('.cal2-card').forEach(c => c.classList.remove('cal2-card--selected'));

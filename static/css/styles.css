@@ -1989,6 +1989,30 @@ select, input { font-family: var(--font-body); }
   flex-shrink: 0;
 }
 
+/* Track info panel */
+#cal2-track-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(8,8,12,0.97) 0%, rgba(8,8,12,0.92) 80%, transparent 100%);
+  padding: 1.5rem 1.5rem 1.25rem;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+  z-index: 10;
+}
+#cal2-track-panel.ctp-visible { transform: translateY(0); }
+.ctp-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem; }
+.ctp-flag { font-size: 1.5rem; line-height: 1; }
+.ctp-title-wrap { flex: 1; min-width: 0; }
+.ctp-name { font-size: 0.95rem; font-weight: 700; color: #F0F0F5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctp-circuit { font-size: 0.72rem; color: #9090A8; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctp-status { font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; border: 1px solid; letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+.ctp-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem; }
+.ctp-stat { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.5rem 0.6rem; text-align: center; }
+.ctp-stat--record { grid-column: span 2; text-align: left; }
+.ctp-stat-val { font-size: 0.85rem; font-weight: 700; color: #F0F0F5; }
+.ctp-stat-label { font-size: 0.62rem; color: #9090A8; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+
 .cal2-globe-hint {
   position: absolute;
   bottom: 16px;
