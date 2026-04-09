@@ -2190,7 +2190,29 @@ select, input { font-family: var(--font-body); }
   }
 }
 
-/* ─── Profile Page ─────────────────────────────────────────────────────────── */
+/* ─── Profile Drawer ───────────────────────────────────────────────────────── */
+#profile-drawer { position: fixed; inset: 0; z-index: 1100; pointer-events: none; }
+#profile-drawer.pd-open { pointer-events: all; }
+.pd-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background 0.25s; }
+#profile-drawer.pd-open .pd-backdrop { background: rgba(0,0,0,0.55); }
+.pd-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 320px; background: #12121A; border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; }
+#profile-drawer.pd-open .pd-panel { transform: translateX(0); }
+.pd-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.pd-title { font-weight: 700; font-size: 1.05rem; color: #F0F0F5; }
+.pd-close { background: none; border: none; color: #9090A8; cursor: pointer; font-size: 1.1rem; padding: 4px 8px; border-radius: 6px; }
+.pd-close:hover { background: rgba(255,255,255,0.06); color: #F0F0F5; }
+.pd-identity { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.pd-avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; flex-shrink: 0; overflow: hidden; }
+.pd-name { font-weight: 600; color: #F0F0F5; font-size: 0.95rem; }
+.pd-email { font-size: 0.78rem; color: #9090A8; margin-top: 2px; }
+.pd-section { padding: 1rem 1.25rem 0; }
+.pd-actions { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; margin-top: auto; }
+.pd-full-btn { width: 100%; text-align: center; }
+.pd-anon { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2rem 1.25rem; gap: 1rem; }
+.pd-anon-icon { font-size: 3rem; color: #444455; }
+.pd-anon p { color: #9090A8; font-size: 0.9rem; }
+
+/* ─── Profile Page (legacy) ────────────────────────────────────────────────── */
 #profile-content { height: 100%; overflow-y: auto; padding: 2rem 1rem; }
 .profile-page { max-width: 540px; margin: 0 auto; }
 .profile-page-header { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; margin-bottom: 1.5rem; }

@@ -49,7 +49,7 @@ const Auth = {
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
       },
-      cacheLocation: 'memory',
+      cacheLocation: 'localstorage',
       useRefreshTokens: true,
     });
 

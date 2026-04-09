@@ -112,6 +112,11 @@ function _driverAvatarFallback(driver) {
 
 // ─── Sidebar + topbar UI ──────────────────────────────────────────────────────
 
+/** Sync in-memory profile from `window` (set by bootstrap or other modules). */
+function _syncProfileRef() {
+  if (window.userProfile) _profile = window.userProfile;
+}
+
 function _updateSidebarFooter(profile) {
   const nameEl = document.querySelector('.footer-name');
   const roleEl = document.querySelector('.footer-role');
@@ -125,9 +130,11 @@ function _updateSidebarFooter(profile) {
     if (profileBtn) {
       profileBtn.innerHTML = 'Sign In';
       profileBtn.classList.add('sign-in-btn');
-      profileBtn.title = 'Sign in with Auth0';
-      profileBtn.onclick = () => Auth.login();
+      profileBtn.title = 'Sign in or pick a driver';
+      profileBtn.onclick = () => openProfileDrawer();
     }
+    const footerBtn = document.getElementById('sidebar-footer-btn');
+    if (footerBtn) footerBtn.onclick = () => openProfileDrawer();
     return;
   }
 
@@ -159,29 +166,31 @@ function _updateSidebarFooter(profile) {
       ? driver.code.slice(0, 2).toUpperCase()
       : initial;
     profileBtn.style.background = teamColor;
-    profileBtn.title = profile.is_guest
-      ? `${driver ? driver.name : 'F1 Fan'} · Click to change`
-      : (profile.display_name || '');
-    profileBtn.onclick = () => {
-      if (profile.is_guest) {
-        Profile.openOnboarding();
-      } else if (confirm('Sign out?')) {
-        Auth.logout();
-      }
-    };
+    profileBtn.title = driver ? driver.name : (profile.display_name || 'Profile');
+    profileBtn.onclick = () => openProfileDrawer();
   }
+
+  // Sidebar footer also opens drawer
+  const footerBtn = document.getElementById('sidebar-footer-btn');
+  if (footerBtn) footerBtn.onclick = () => openProfileDrawer();
 }
 
 // ─── Profile API calls ────────────────────────────────────────────────────────
 
 const Profile = {
-  get() { return _profile; },
+  get() {
+    _syncProfileRef();
+    return window.userProfile ?? _profile;
+  },
 
   async load() {
     const token = await Auth.getToken();
     if (!token) {
-      _updateSidebarFooter(null);
-      return null;
+      const guest = _loadGuestProfile();
+      _profile = guest || null;
+      window.userProfile = _profile;
+      _updateSidebarFooter(_profile);
+      return _profile;
     }
 
     try {
@@ -266,6 +275,8 @@ async function _fetchDrivers() {
 }
 
 async function _showOnboardingModal() {
+  if (document.getElementById('onboarding-modal')) return;
+
   const drivers = await _fetchDrivers();
 
   // Build modal HTML
@@ -457,6 +468,97 @@ async function _showOnboardingModal() {
   });
 }
 
+// ─── Profile Page ─────────────────────────────────────────────────────────────
+
+export function openProfileDrawer() {
+  if (document.getElementById('profile-drawer')) return;
+
+  _syncProfileRef();
+  const profile = window.userProfile ?? _profile;
+  const driver = profile ? FALLBACK_DRIVERS.find(d => d.code === profile.favorite_driver_code) : null;
+  const team   = profile ? FALLBACK_TEAMS.find(t => t.id === profile.favorite_team_id) : null;
+  const teamColor = TEAM_COLORS[driver?.team || team?.id] || '#E10600';
+
+  const drawer = document.createElement('div');
+  drawer.id = 'profile-drawer';
+  drawer.innerHTML = `
+    <div class="pd-backdrop"></div>
+    <div class="pd-panel">
+      <div class="pd-header">
+        <span class="pd-title">Profile</span>
+        <button class="pd-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      ${!profile ? `
+        <div class="pd-anon">
+          <div class="pd-anon-icon"><i class="fa-solid fa-user-circle"></i></div>
+          <p>Sign in to save your picks, or continue as a guest.</p>
+          <button class="ob-btn-next pd-full-btn" id="pd-signin-btn"><i class="fa-brands fa-google"></i> Sign In</button>
+          <button class="ob-btn-skip pd-full-btn" id="pd-guest-btn">Pick a Driver as Guest</button>
+        </div>
+      ` : `
+        <div class="pd-identity" style="--team-color:${teamColor}">
+          <div class="pd-avatar" style="background:${teamColor}22;border:2px solid ${teamColor};color:${teamColor}">
+            ${profile.avatar_url
+              ? `<img src="${profile.avatar_url}" alt="avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+              : `<span>${(profile.display_name || 'F')[0].toUpperCase()}</span>`}
+          </div>
+          <div>
+            <div class="pd-name">${profile.display_name || 'F1 Fan'}</div>
+            <div class="pd-email">${profile.email || (profile.is_guest ? 'Guest' : '')}</div>
+            ${profile.is_guest ? '<span class="pp-guest-badge">Guest</span>' : '<span class="pp-auth-badge"><i class="fa-solid fa-shield-check"></i> Auth0</span>'}
+          </div>
+        </div>
+        <div class="pd-section">
+          <div class="pp-section-title">Favourite Driver</div>
+          ${driver ? `
+            <div class="pp-fav-card" style="--team-color:${teamColor}">
+              <div class="pp-fav-num" style="color:${teamColor}">${driver.number}</div>
+              <div>
+                <div class="pp-fav-name">${driver.name}</div>
+                <div class="pp-fav-team">${driver.teamName}</div>
+              </div>
+            </div>
+          ` : `<p class="pp-empty">No driver selected.</p>`}
+        </div>
+        <div class="pd-section">
+          <div class="pp-section-title">Favourite Team</div>
+          ${team ? `
+            <div class="pp-fav-card" style="--team-color:${TEAM_COLORS[team.id] || '#E10600'}">
+              <div class="pp-team-dot" style="background:${TEAM_COLORS[team.id] || '#E10600'}"></div>
+              <div class="pp-fav-name">${team.name}</div>
+            </div>
+          ` : `<p class="pp-empty">No team selected.</p>`}
+        </div>
+        <div class="pd-actions">
+          <button class="ob-btn-next pd-full-btn" id="pd-change-btn"><i class="fa-solid fa-pen"></i> Change Driver / Team</button>
+          ${profile.is_guest
+            ? `<button class="pp-signin-prompt pd-full-btn" id="pd-signin-btn"><i class="fa-brands fa-google"></i> Sign in to sync</button>`
+            : `<button class="ob-btn-skip pd-full-btn" id="pd-signout-btn"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>`}
+        </div>
+      `}
+    </div>
+  `;
+  document.body.appendChild(drawer);
+  requestAnimationFrame(() => drawer.classList.add('pd-open'));
+
+  const close = () => {
+    drawer.classList.remove('pd-open');
+    drawer.addEventListener('transitionend', () => drawer.remove(), { once: true });
+  };
+  drawer.querySelector('.pd-backdrop').onclick = close;
+  drawer.querySelector('.pd-close').onclick = close;
+  document.getElementById('pd-signin-btn')?.addEventListener('click', () => { close(); Auth.login(); });
+  document.getElementById('pd-guest-btn')?.addEventListener('click', () => { close(); Profile.openOnboarding(); });
+  document.getElementById('pd-change-btn')?.addEventListener('click', () => { close(); Profile.openOnboarding(); });
+  document.getElementById('pd-signout-btn')?.addEventListener('click', () => {
+    close();
+    setTimeout(() => { if (confirm('Sign out?')) Auth.logout(); }, 200);
+  });
+}
+
+// Keep a no-op export alias so any lingering import of renderProfilePage doesn't crash
+export function renderProfilePage() { openProfileDrawer(); }
+
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 
 window.addEventListener('auth:ready', ({ detail }) => {
@@ -473,5 +575,27 @@ window.addEventListener('auth:ready', ({ detail }) => {
 
 window.addEventListener('auth:login', () => Profile.load());
 
+window.addEventListener('profile:updated', () => {
+  // Re-render drawer if open
+  if (document.getElementById('profile-drawer')) {
+    document.getElementById('profile-drawer').remove();
+    openProfileDrawer();
+  }
+});
+
+// Hydrate guest prefs immediately so Garage / Profile don't see a null profile before auth:ready fires.
+(function _bootstrapGuestProfile() {
+  const guest = _loadGuestProfile();
+  if (!guest) return;
+  _profile = guest;
+  window.userProfile = guest;
+  const apply = () => _updateSidebarFooter(guest);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', apply, { once: true });
+  } else {
+    queueMicrotask(apply);
+  }
+})();
+
 export default Profile;
-export { TEAM_COLORS, FALLBACK_DRIVERS };
+export { TEAM_COLORS, FALLBACK_DRIVERS, FALLBACK_TEAMS };

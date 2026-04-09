@@ -152,7 +152,10 @@ function _initGlobe(containerId) {
       const camera   = globe.camera();
       if (!renderer || !scene || !camera) { globe.resumeAnimation(); return; }
 
-      globe.pauseAnimation(); // stop globe.gl's loop to avoid double-rendering
+      // Override globe.gl's pauseAnimation so its IntersectionObserver
+      // can never kill our loop once we've started it.
+      globe.pauseAnimation = () => {};
+
       renderer.setAnimationLoop(() => {
         globe.controls().update();
         renderer.render(scene, camera);

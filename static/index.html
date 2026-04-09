@@ -85,12 +85,13 @@
         </li>
       </ul>
 
-      <div class="sidebar-footer">
+      <div class="sidebar-footer" id="sidebar-footer-btn" style="cursor:pointer" title="Open profile">
         <div class="avatar-sm">F1</div>
         <div>
           <div class="footer-name">F1 Fan</div>
           <div class="footer-role">Race Analyst</div>
         </div>
+        <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:#9090A8;font-size:0.7rem;"></i>
       </div>
     </nav>
 
@@ -362,6 +363,11 @@
           <div id="calendar-content" class="calendar-layout"></div>
         </div>
 
+        <!-- ===== PROFILE VIEW ===== -->
+        <div id="profile-view" class="view">
+          <div id="profile-content"></div>
+        </div>
+
       </div><!-- .views-container -->
     </main>
   </div><!-- .app-container -->
@@ -383,6 +389,7 @@
       'news-view':      'News & Insights',
       'garage-view':    'My Garage',
       'calendar-view':  'Calendar',
+      'profile-view':   'Profile',
     };
 
     // Tab switching
