@@ -98,15 +98,15 @@ function _initGlobe(containerId) {
   // waitForGlobeReady: wait for earth + sky textures before first paint (avoids black sphere).
   // onGlobeReady + resumeAnimation: globe.gl may pause the loop via IntersectionObserver while
   // the canvas is settling; resume after the globe is actually on the scene.
-  const globe = Globe({ animateIn: false, waitForGlobeReady: true })(el)
+  // animateIn:false — skip the zoom-in animation so rendering starts immediately
+  // waitForGlobeReady:false — don't wait for textures; start loop right away
+  const globe = Globe({ animateIn: false, waitForGlobeReady: false })(el)
     .width(w).height(h)
-    // Globe appearance — dark with subtle blue tint, no atmosphere glow needed
     .globeImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/earth-night.jpg')
     .backgroundImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/night-sky.png')
     .showAtmosphere(true)
     .atmosphereColor('#1a1a3e')
     .atmosphereAltitude(0.15)
-    // Points layer for race pins
     .pointsData(RACES_2026)
     .pointLat('lat')
     .pointLng('lng')
@@ -115,7 +115,6 @@ function _initGlobe(containerId) {
     .pointColor(pinColor)
     .pointResolution(12)
     .pointsMerge(false)
-    // Labels
     .labelsData(RACES_2026.filter(r => {
       if (nextRace && r.round === nextRace.round) return true;
       const s = _raceStatus(r);
@@ -129,7 +128,6 @@ function _initGlobe(containerId) {
     .labelColor(r => nextRace && r.round === nextRace.round ? '#E10600' : 'rgba(200,200,220,0.75)')
     .labelAltitude(0.02)
     .labelResolution(2)
-    // Tooltip
     .pointLabel(r => `
       <div style="background:rgba(10,10,13,0.92);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 14px;font-family:'Inter',sans-serif;pointer-events:none;">
         <div style="font-size:1rem;margin-bottom:2px;">${r.flag}</div>
@@ -138,31 +136,34 @@ function _initGlobe(containerId) {
         <div style="color:#9090A8;font-size:0.72rem;">${_formatDate(r.date)}</div>
       </div>
     `)
-    // Click on pin
-    .onPointClick(r => _selectRace(r.round, false))
-    .onGlobeReady(() => {
-      const box = document.getElementById(containerId);
-      if (box) globe.width(box.clientWidth || w).height(box.clientHeight || h);
+    .onPointClick(r => _selectRace(r.round, false));
 
-      // globe.gl gates its loop via IntersectionObserver — bypass it entirely by
-      // driving Three.js's own setAnimationLoop directly. This always renders
-      // regardless of iframe/tab visibility.
-      const renderer = globe.renderer();
-      const scene    = globe.scene();
-      const camera   = globe.camera();
-      if (!renderer || !scene || !camera) { globe.resumeAnimation(); return; }
+  // Patch pauseAnimation IMMEDIATELY — before IntersectionObserver can fire
+  globe.pauseAnimation = () => {};
 
-      // Override globe.gl's pauseAnimation so its IntersectionObserver
-      // can never kill our loop once we've started it.
-      globe.pauseAnimation = () => {};
+  // Start our own render loop via Three.js setAnimationLoop which runs
+  // unconditionally, bypassing globe.gl's IntersectionObserver gating entirely.
+  // We do this after a short delay so the renderer/scene/camera are attached.
+  setTimeout(() => {
+    const box = document.getElementById(containerId);
+    if (box) globe.width(box.clientWidth || w).height(box.clientHeight || h);
 
+    const renderer = globe.renderer();
+    const scene    = globe.scene();
+    const camera   = globe.camera();
+
+    if (renderer && scene && camera) {
       renderer.setAnimationLoop(() => {
         globe.controls().update();
         renderer.render(scene, camera);
       });
-      // Store stopper on the element so we can clean up on nav away
       el._stopGlobeLoop = () => renderer.setAnimationLoop(null);
-    });
+    } else {
+      // Fallback: let globe manage its own loop
+      globe.pauseAnimation = Globe.prototype?.pauseAnimation || (() => {});
+      globe.resumeAnimation();
+    }
+  }, 200);
 
   // Initial auto-rotate
   globe.controls().autoRotate = true;
