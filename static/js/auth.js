@@ -37,7 +37,6 @@ const Auth = {
       clientId,
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
-        audience,
       },
       cacheLocation: 'memory',
       useRefreshTokens: true,
@@ -79,7 +78,6 @@ const Auth = {
     _client.loginWithRedirect({
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
-        audience,
       },
     });
   },
