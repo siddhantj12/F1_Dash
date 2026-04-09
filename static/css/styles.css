@@ -394,6 +394,8 @@ select, input { font-family: var(--font-body); }
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 .view {
   display: none;
@@ -402,6 +404,18 @@ select, input { font-family: var(--font-body); }
   animation: fadeSlideUp 0.3s var(--t-normal) both;
 }
 .view.active { display: block; }
+
+/* Calendar view fills the full container — no padding, no scroll on the outer shell */
+#calendar-view {
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+}
+#calendar-view.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(12px); }
@@ -1605,4 +1619,560 @@ select, input { font-family: var(--font-body); }
   .telemetry-layout { grid-template-columns: 1fr; }
   .control-panel, .right-panel { width: 100%; }
   .track-canvas-container { height: 240px; }
+}
+
+/* ============================================================
+   MY GARAGE
+   ============================================================ */
+
+.garage-layout {
+  padding: 28px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Anonymous / no-favorite state */
+.garage-anon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.garage-anon-icon {
+  font-size: 3rem;
+  color: var(--text-tertiary);
+}
+
+.garage-anon h2 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.garage-anon p {
+  color: var(--text-secondary);
+  max-width: 360px;
+  margin: 0;
+}
+
+.garage-anon-btn {
+  background: var(--red);
+  border: none;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-family: var(--font-display);
+  transition: opacity var(--t-fast);
+}
+
+.garage-anon-btn:hover { opacity: 0.85; }
+
+/* Hero */
+.garage-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: var(--bg-panel);
+  border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--team-color, var(--red));
+  border-radius: var(--r-lg);
+  padding: 24px 28px;
+}
+
+.garage-hero-photo-wrap {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+
+.garage-hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.garage-hero-initials {
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  border-radius: 50%;
+}
+
+.garage-hero-info {
+  flex: 1;
+}
+
+.garage-hero-number {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.garage-hero-name {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.garage-hero-team {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.garage-hero-stats {
+  display: flex;
+  gap: 28px;
+}
+
+.garage-stat {
+  text-align: center;
+}
+
+.garage-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.garage-stat-val {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* Body grid */
+.garage-body {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 20px;
+}
+
+.garage-col {
+  background: var(--bg-panel);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  padding: 20px 22px;
+}
+
+.garage-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+
+.garage-section-empty {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  padding: 20px 0;
+}
+
+.garage-loading {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Results table */
+.garage-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.garage-results-table th {
+  color: var(--text-tertiary);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: 0 8px 10px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.garage-results-table td {
+  padding: 8px 8px 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+}
+
+.rt-round { color: var(--text-tertiary); font-size: 0.75rem; }
+.rt-race  { color: var(--text-primary); }
+
+.rt-pos-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+
+.pos-win    { background: #FFD70022; color: #FFD700; }
+.pos-podium { background: #C0C0C022; color: #C0C0C0; }
+.pos-points { background: #00E67622; color: #00E676; }
+.pos-out    { background: var(--bg-elevated); color: var(--text-tertiary); }
+
+.rt-pts { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* Chart */
+.garage-chart-wrap {
+  position: relative;
+  height: 220px;
+}
+
+/* Rows at the bottom */
+.garage-row {
+  background: var(--bg-panel);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  padding: 20px 22px;
+}
+
+.garage-telem-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+
+.garage-telem-btn:hover {
+  border-color: var(--red);
+  background: var(--red-dim);
+}
+
+/* News cards */
+.garage-news-card {
+  display: block;
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: border-color var(--t-fast);
+}
+
+.garage-news-card:hover { border-color: rgba(255,255,255,0.15); }
+.garage-news-card:last-child { margin-bottom: 0; }
+
+.gnc-meta {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  margin-bottom: 5px;
+}
+
+.gnc-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* ============================================================
+   CALENDAR v2 — Globe + List layout
+   ============================================================ */
+
+.calendar-layout {
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+}
+
+.cal2-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  height: 100%;
+  min-height: calc(100vh - 60px);
+}
+
+/* Globe panel */
+.cal2-globe-panel {
+  position: relative;
+  background: #020208;
+  overflow: hidden;
+  min-height: 500px;
+}
+
+#cal2-globe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#cal2-globe canvas {
+  display: block;
+}
+
+#cal2-globe canvas {
+  display: block;
+}
+
+.cal2-globe-overlay {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.cal2-season-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(10,10,13,0.82);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+}
+
+.cal2-next-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(225,6,0,0.15);
+  border: 1px solid rgba(225,6,0,0.4);
+  border-radius: var(--r-pill);
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--red-bright);
+  backdrop-filter: blur(8px);
+}
+
+.cal2-next-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red-bright);
+  animation: calPulse 1.1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.cal2-globe-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: rgba(144,144,168,0.55);
+  pointer-events: none;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+/* List panel */
+.cal2-list-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-dark);
+  border-left: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.cal2-list-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.cal2-list-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+.cal2-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.cal2-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.cal2-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-elevated) transparent;
+}
+
+/* Race cards */
+.cal2-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  cursor: pointer;
+  transition: background var(--t-fast);
+  outline: none;
+}
+
+.cal2-card:hover { background: var(--glass-hover); }
+
+.cal2-card--selected {
+  background: rgba(225,6,0,0.07) !important;
+  border-left: 2px solid var(--red);
+}
+
+.cal2-card--next {
+  background: rgba(225,6,0,0.04);
+}
+
+.cal2-card--done {
+  opacity: 0.55;
+}
+.cal2-card--done:hover { opacity: 0.8; }
+
+.cal2-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cal2-card-flag {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cal2-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cal2-card-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal2-card-circuit {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal2-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.cal2-card-round {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  font-weight: 700;
+}
+
+.cal2-card-date {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pills */
+.cal2-pill {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal2-pill--next     { background: var(--red-dim); color: var(--red-bright); border: 1px solid rgba(225,6,0,0.4); }
+.cal2-pill--live     { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.35); }
+.cal2-pill--done     { background: var(--bg-elevated); color: var(--text-tertiary); }
+.cal2-pill--upcoming { background: var(--bg-elevated); color: var(--text-tertiary); }
+
+.cal2-pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: calPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes calPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.65); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@media (max-width: 900px) {
+  .cal2-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 50vh 1fr;
+  }
+  .cal2-list-panel {
+    border-left: none;
+    border-top: 1px solid var(--glass-border);
+  }
 }

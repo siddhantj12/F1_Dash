@@ -17,9 +17,26 @@
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Globe.gl for 3D race globe (bundles Three.js internally) -->
+  <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/dist/globe.gl.min.js"></script>
 
   <!-- Custom Styles -->
   <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/onboarding.css">
+
+  <!-- Auth0 config (values injected at runtime via .env; fallback to empty strings = auth disabled) -->
+  <script>
+    window.AUTH0_CONFIG = {
+      domain:      '',   // e.g. 'your-tenant.auth0.com'  — set in .env and served via /api/auth0-config
+      clientId:    '',   // Auth0 SPA client ID
+      audience:    '',   // API identifier e.g. 'https://f1dashboard.api'
+      redirectUri: window.location.origin,
+    };
+    // Override at runtime from /api/auth0-config (non-sensitive public values)
+    fetch('/api/auth0-config').then(r => r.ok ? r.json() : null).then(cfg => {
+      if (cfg) Object.assign(window.AUTH0_CONFIG, cfg);
+    }).catch(() => {});
+  </script>
 </head>
 <body>
   <div class="app-container">
@@ -38,6 +55,10 @@
 
       <div class="nav-section-label">Main</div>
       <ul class="nav-links" id="nav-main">
+        <li data-target="garage-view" id="nav-garage">
+          <i class="fa-solid fa-garage"></i>
+          <span>My Garage</span>
+        </li>
         <li class="active" data-target="telemetry-view" id="nav-telemetry">
           <i class="fa-solid fa-gauge-high"></i>
           <span>Telemetry</span>
@@ -45,7 +66,6 @@
         <li data-target="news-view" id="nav-news">
           <i class="fa-regular fa-newspaper"></i>
           <span>News & Insights</span>
-          <span class="nav-pill">NEW</span>
         </li>
         <li id="nav-live">
           <i class="fa-solid fa-tower-broadcast"></i>
@@ -55,7 +75,7 @@
 
       <div class="nav-section-label" style="margin-top:16px;">More</div>
       <ul class="nav-links bottom-links">
-        <li>
+        <li data-target="calendar-view" id="nav-calendar">
           <i class="fa-regular fa-calendar-days"></i>
           <span>Calendar</span>
         </li>
@@ -330,6 +350,18 @@
           </div>
         </div>
 
+        <!-- ===== MY GARAGE VIEW ===== -->
+        <div id="garage-view" class="view">
+          <!-- Rendered by static/js/garage.js -->
+          <div id="garage-content" class="garage-layout"></div>
+        </div>
+
+        <!-- ===== CALENDAR VIEW ===== -->
+        <div id="calendar-view" class="view">
+          <!-- Rendered by static/js/calendar.js -->
+          <div id="calendar-content" class="calendar-layout"></div>
+        </div>
+
       </div><!-- .views-container -->
     </main>
   </div><!-- .app-container -->
@@ -338,10 +370,21 @@
   <!-- Scripts -->
   <script type="module" src="/static/js/supabase.js"></script>
   <script type="module" src="/static/js/api.js"></script>
+  <script type="module" src="/static/js/auth.js"></script>
+  <script type="module" src="/static/js/profile.js"></script>
+  <script type="module" src="/static/js/garage.js"></script>
+  <script type="module" src="/static/js/calendar.js"></script>
   <script type="module" src="/static/js/app.js"></script>
 
   <!-- Nav tab switching & sidebar toggle -->
   <script>
+    const PAGE_TITLES = {
+      'telemetry-view': 'Telemetry',
+      'news-view':      'News & Insights',
+      'garage-view':    'My Garage',
+      'calendar-view':  'Calendar',
+    };
+
     // Tab switching
     document.querySelectorAll('[data-target]').forEach(el => {
       el.addEventListener('click', () => {
@@ -351,9 +394,10 @@
         document.getElementById(target)?.classList.add('active');
         document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
         el.classList.add('active');
-        const titles = { 'telemetry-view': 'Telemetry', 'news-view': 'News & Insights' };
         const titleEl = document.getElementById('current-page-title');
-        if (titleEl) titleEl.textContent = titles[target] || target;
+        if (titleEl) titleEl.textContent = PAGE_TITLES[target] || target;
+        // Notify modules that a view became active
+        window.dispatchEvent(new CustomEvent('view:activated', { detail: { viewId: target } }));
       });
     });
 

@@ -1,32 +1,19 @@
-from datetime import timedelta
+"""Auth router — placeholder kept for Swagger UI OAuth2 compatibility.
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+Real authentication is handled by Auth0 (see src/middleware/auth0.py).
+The frontend uses the Auth0 SPA SDK; the backend validates JWTs via JWKS.
+"""
 
+from fastapi import APIRouter
+from fastapi.security import OAuth2AuthorizationCodeBearer
 
-# A dummy function to simulate creating a token
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    # In a real app, you'd encode a JWT here
-    return "fake-jwt-token"
+from src.config import settings
 
+router = APIRouter(tags=["Authentication"])
 
-router = APIRouter()
-
-
-@router.post("/token", tags=["Authentication"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    # In a real app, you would have a database of users and check the password hash
-    # For this placeholder, we'll accept any user/pass
-    if not form_data.username:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Create a fake token
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": form_data.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+# Kept so FastAPI's OpenAPI spec shows the auth flow in Swagger UI
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl=f"https://{settings.auth0_domain}/authorize",
+    tokenUrl=f"https://{settings.auth0_domain}/oauth/token",
+    auto_error=False,
+)
