@@ -14,8 +14,8 @@ const RACES_2026 = [
   { round:1,  name:'Australian Grand Prix',    short:'Australia',     circuit:'Albert Park',               city:'Melbourne',    country:'Australia',   flag:'🇦🇺', date:'2026-03-15', lat:-37.8497, lng:144.9680 },
   { round:2,  name:'Chinese Grand Prix',        short:'China',         circuit:'Shanghai International',    city:'Shanghai',     country:'China',       flag:'🇨🇳', date:'2026-03-22', lat:31.3389,  lng:121.2198 },
   { round:3,  name:'Japanese Grand Prix',       short:'Japan',         circuit:'Suzuka Circuit',            city:'Suzuka',       country:'Japan',       flag:'🇯🇵', date:'2026-04-05', lat:34.8431,  lng:136.5414 },
-  { round:4,  name:'Bahrain Grand Prix',        short:'Bahrain',       circuit:'Bahrain International',     city:'Sakhir',       country:'Bahrain',     flag:'🇧🇭', date:'2026-04-19', lat:26.0325,  lng:50.5106  },
-  { round:5,  name:'Saudi Arabian Grand Prix',  short:'Saudi Arabia',  circuit:'Jeddah Corniche Circuit',   city:'Jeddah',       country:'Saudi Arabia',flag:'🇸🇦', date:'2026-04-26', lat:21.6319,  lng:39.1044  },
+  { round:4,  name:'Bahrain Grand Prix',        short:'Bahrain',       circuit:'Bahrain International',     city:'Sakhir',       country:'Bahrain',     flag:'🇧🇭', date:'2026-04-19', lat:26.0325,  lng:50.5106,  suspended:true },
+  { round:5,  name:'Saudi Arabian Grand Prix',  short:'Saudi Arabia',  circuit:'Jeddah Corniche Circuit',   city:'Jeddah',       country:'Saudi Arabia',flag:'🇸🇦', date:'2026-04-26', lat:21.6319,  lng:39.1044,  suspended:true },
   { round:6,  name:'Miami Grand Prix',          short:'Miami',         circuit:'Miami International',       city:'Miami',        country:'USA',         flag:'🇺🇸', date:'2026-05-10', lat:25.9581,  lng:-80.2389 },
   { round:7,  name:'Emilia Romagna Grand Prix', short:'Imola',         circuit:'Autodromo Enzo e Dino Ferrari', city:'Imola',    country:'Italy',       flag:'🇮🇹', date:'2026-05-24', lat:44.3439,  lng:11.7167  },
   { round:8,  name:'Monaco Grand Prix',         short:'Monaco',        circuit:'Circuit de Monaco',         city:'Monaco',       country:'Monaco',      flag:'🇲🇨', date:'2026-05-31', lat:43.7347,  lng:7.4206   },
@@ -39,9 +39,10 @@ const RACES_2026 = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function _raceStatus(dateStr) {
+function _raceStatus(race) {
+  if (race.suspended) return 'suspended';
   const today = new Date(); today.setHours(0,0,0,0);
-  const d     = new Date(dateStr); d.setHours(0,0,0,0);
+  const d     = new Date(race.date); d.setHours(0,0,0,0);
   const diff  = Math.round((d - today) / 86400000);
   if (diff < -3) return 'completed';
   if (diff <= 3) return 'live';
@@ -50,7 +51,11 @@ function _raceStatus(dateStr) {
 
 function _findNextRound() {
   const today = new Date(); today.setHours(0,0,0,0);
-  return RACES_2026.find(r => { const d = new Date(r.date); d.setHours(0,0,0,0); return d >= today; });
+  return RACES_2026.find(r => {
+    if (r.suspended) return false;
+    const d = new Date(r.date); d.setHours(0,0,0,0);
+    return d >= today;
+  });
 }
 
 function _formatDate(dateStr) {
@@ -71,8 +76,9 @@ function _initGlobe(containerId) {
   // Pin color by status
   const pinColor = (r) => {
     if (r.round === _selectedRound) return '#FFFFFF';
-    const s = _raceStatus(r.date);
+    const s = _raceStatus(r);
     if (nextRace && r.round === nextRace.round) return '#E10600';
+    if (s === 'suspended') return '#FF6B00';
     if (s === 'completed') return '#444455';
     if (s === 'live')      return '#00E676';
     return '#9090A8';
@@ -81,7 +87,8 @@ function _initGlobe(containerId) {
   const pinSize = (r) => {
     if (r.round === _selectedRound) return 0.7;
     if (nextRace && r.round === nextRace.round) return 0.65;
-    const s = _raceStatus(r.date);
+    const s = _raceStatus(r);
+    if (s === 'suspended') return 0.42;
     return s === 'completed' ? 0.28 : 0.42;
   };
 
@@ -108,7 +115,8 @@ function _initGlobe(containerId) {
     // Labels
     .labelsData(RACES_2026.filter(r => {
       if (nextRace && r.round === nextRace.round) return true;
-      return _raceStatus(r.date) !== 'completed';
+      const s = _raceStatus(r);
+      return s !== 'completed' && s !== 'suspended';
     }))
     .labelLat('lat')
     .labelLng('lng')
@@ -130,11 +138,26 @@ function _initGlobe(containerId) {
     // Click on pin
     .onPointClick(r => _selectRace(r.round, false));
 
-  // Force correct size after layout settles
+  // Force correct size and kick the render loop.
+  // Globe.gl gates animation via IntersectionObserver — if the element isn't intersecting
+  // (e.g. inside an iframe or hidden view) it never starts. Poll until a pixel is drawn.
   setTimeout(() => {
-    const w2 = el.clientWidth || w;
-    const h2 = el.clientHeight || h;
-    globe.width(w2).height(h2);
+    globe.width(el.clientWidth || w).height(el.clientHeight || h);
+    globe.resumeAnimation();
+
+    // Poll for up to 3s; once a non-black pixel appears, stop
+    let attempts = 0;
+    const poll = setInterval(() => {
+      globe.resumeAnimation();
+      const canvas = el.querySelector('canvas');
+      const gl2 = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
+      if (gl2) {
+        const px = new Uint8Array(4);
+        gl2.readPixels(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1, gl2.RGBA, gl2.UNSIGNED_BYTE, px);
+        if (px[0] > 0 || px[1] > 0 || px[2] > 0) { clearInterval(poll); return; }
+      }
+      if (++attempts > 15) clearInterval(poll);
+    }, 200);
   }, 100);
 
   // Initial auto-rotate
@@ -177,8 +200,9 @@ function _selectRace(round, flyGlobe = true) {
     _globe
       .pointColor(r => {
         if (r.round === _selectedRound) return '#FFFFFF';
+        const s = _raceStatus(r);
         if (nextRace && r.round === nextRace.round) return '#E10600';
-        const s = _raceStatus(r.date);
+        if (s === 'suspended') return '#FF6B00';
         if (s === 'completed') return '#444455';
         if (s === 'live')      return '#00E676';
         return '#9090A8';
@@ -186,7 +210,8 @@ function _selectRace(round, flyGlobe = true) {
       .pointRadius(r => {
         if (r.round === _selectedRound) return 0.7;
         if (nextRace && r.round === nextRace.round) return 0.65;
-        return _raceStatus(r.date) === 'completed' ? 0.28 : 0.42;
+        const s = _raceStatus(r);
+        return s === 'completed' ? 0.28 : 0.42;
       });
   }
 }
@@ -230,13 +255,14 @@ function renderCalendar() {
         </div>
         <div class="cal2-list" id="cal2-list">
           ${RACES_2026.map(race => {
-            const status  = _raceStatus(race.date);
-            const isNext  = nextRace && nextRace.round === race.round;
-            const isDone  = status === 'completed';
-            const isLive  = status === 'live';
-            const dotColor = isNext ? '#E10600' : isLive ? '#00E676' : isDone ? '#333344' : '#555568';
+            const status      = _raceStatus(race);
+            const isNext      = nextRace && nextRace.round === race.round;
+            const isDone      = status === 'completed';
+            const isLive      = status === 'live';
+            const isSuspended = status === 'suspended';
+            const dotColor = isNext ? '#E10600' : isLive ? '#00E676' : isSuspended ? '#FF6B00' : isDone ? '#333344' : '#555568';
             return `
-              <div class="cal2-card ${isNext ? 'cal2-card--next' : ''} ${isDone ? 'cal2-card--done' : ''}"
+              <div class="cal2-card ${isNext ? 'cal2-card--next' : ''} ${isDone ? 'cal2-card--done' : ''} ${isSuspended ? 'cal2-card--suspended' : ''}"
                    data-round="${race.round}"
                    tabindex="0" role="button" aria-label="${race.name}">
                 <div class="cal2-card-dot" style="background:${dotColor}"></div>
@@ -248,10 +274,11 @@ function renderCalendar() {
                 <div class="cal2-card-right">
                   <div class="cal2-card-round">R${race.round}</div>
                   <div class="cal2-card-date">${_formatDate(race.date)}</div>
-                  ${isNext  ? '<span class="cal2-pill cal2-pill--next"><span class="cal2-pulse"></span>Next</span>' : ''}
-                  ${isLive  ? '<span class="cal2-pill cal2-pill--live"><span class="cal2-pulse"></span>Live</span>' : ''}
-                  ${isDone  ? '<span class="cal2-pill cal2-pill--done">Done</span>' : ''}
-                  ${!isNext && !isLive && !isDone ? '<span class="cal2-pill cal2-pill--upcoming">Upcoming</span>' : ''}
+                  ${isNext      ? '<span class="cal2-pill cal2-pill--next"><span class="cal2-pulse"></span>Next</span>' : ''}
+                  ${isLive      ? '<span class="cal2-pill cal2-pill--live"><span class="cal2-pulse"></span>Live</span>' : ''}
+                  ${isDone      ? '<span class="cal2-pill cal2-pill--done">Done</span>' : ''}
+                  ${isSuspended ? '<span class="cal2-pill cal2-pill--suspended">Suspended</span>' : ''}
+                  ${!isNext && !isLive && !isDone && !isSuspended ? '<span class="cal2-pill cal2-pill--upcoming">Upcoming</span>' : ''}
                 </div>
               </div>
             `;
