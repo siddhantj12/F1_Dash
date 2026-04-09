@@ -123,12 +123,10 @@ function _updateSidebarFooter(profile) {
     if (roleEl) roleEl.textContent = 'Race Analyst';
     if (avatarEl) avatarEl.textContent = 'F1';
     if (profileBtn) {
-      profileBtn.innerHTML = '<i class="fa-solid fa-user"></i>';
+      profileBtn.innerHTML = 'Sign In';
       profileBtn.classList.add('sign-in-btn');
-      profileBtn.title = 'Pick your driver';
-      profileBtn.onclick = () => {
-        document.querySelector('[data-target="garage-view"]')?.click();
-      };
+      profileBtn.title = 'Sign in with Auth0';
+      profileBtn.onclick = () => Auth.login();
     }
     return;
   }
