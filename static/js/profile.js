@@ -200,7 +200,21 @@ const Profile = {
 
   async load() {
     const token = await Auth.getToken();
+
+    // No token — check if we have a cached authenticated profile (token refresh failed but user was logged in)
     if (!token) {
+      if (Auth.isAuthenticated) {
+        // Try cached profile from a previous successful fetch
+        try {
+          const cached = JSON.parse(localStorage.getItem('f1dash_profile') || 'null');
+          if (cached && !cached.is_guest) {
+            _profile = cached;
+            window.userProfile = _profile;
+            _updateSidebarFooter(_profile);
+            return _profile;
+          }
+        } catch {}
+      }
       const guest = _loadGuestProfile();
       _profile = guest || null;
       window.userProfile = _profile;
@@ -215,6 +229,8 @@ const Profile = {
       if (!resp.ok) throw new Error(`/api/me returned ${resp.status}`);
       _profile = await resp.json();
       window.userProfile = _profile;
+      // Cache for next load if token refresh fails
+      localStorage.setItem('f1dash_profile', JSON.stringify(_profile));
       _updateSidebarFooter(_profile);
 
       if (!_profile.onboarding_complete) {

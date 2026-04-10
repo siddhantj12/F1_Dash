@@ -63,6 +63,7 @@ const Auth = {
         Auth.user = await _client.getUser();
         // Persist flag so silent-auth failures don't immediately log the user out
         localStorage.setItem('f1dash_auth', '1');
+        if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
         window.dispatchEvent(new CustomEvent('auth:login', { detail: { user: Auth.user } }));
       } catch (e) {
         console.error('[Auth] handleRedirectCallback error:', e);
@@ -73,11 +74,15 @@ const Auth = {
         Auth.isAuthenticated = true;
         Auth.user = await _client.getUser();
         localStorage.setItem('f1dash_auth', '1');
+        if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
       } catch {
         // getTokenSilently() failed (refresh tokens not configured or cookies blocked).
-        // Use the SDK's cached user object if we previously logged in successfully.
+        // Use the SDK's cached user object, then fall back to our own localStorage copy.
         const hadAuth = localStorage.getItem('f1dash_auth') === '1';
-        const cached  = hadAuth ? (await _client.getUser().catch(() => null)) : null;
+        let cached = hadAuth ? (await _client.getUser().catch(() => null)) : null;
+        if (!cached && hadAuth) {
+          try { cached = JSON.parse(localStorage.getItem('f1dash_user') || 'null'); } catch {}
+        }
         if (cached) {
           Auth.isAuthenticated = true;
           Auth.user = cached;
@@ -85,6 +90,7 @@ const Auth = {
           Auth.isAuthenticated = false;
           Auth.user = null;
           localStorage.removeItem('f1dash_auth');
+          localStorage.removeItem('f1dash_user');
         }
       }
     }
@@ -109,6 +115,8 @@ const Auth = {
     Auth.isAuthenticated = false;
     Auth.user = null;
     localStorage.removeItem('f1dash_auth');
+    localStorage.removeItem('f1dash_user');
+    localStorage.removeItem('f1dash_profile');
     _client.logout({ logoutParams: { returnTo: window.location.origin } });
   },
 

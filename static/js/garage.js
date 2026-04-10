@@ -88,9 +88,29 @@ function _buildResultsFromStandings(standings, driverCode) {
     .map(r => ({ round: r.round, position: r.position, points: POINTS_TABLE[r.position] || 0 }));
 }
 
+const _DRIVER_PHOTO_MAP = {
+  VER: { slug:'verstappen',  year:2024 }, LAW: { slug:'lawson',      year:2024 },
+  LEC: { slug:'leclerc',     year:2024 }, HAM: { slug:'hamilton',    year:2024 },
+  RUS: { slug:'russell',     year:2024 }, ANT: { slug:'antonelli',   year:2025 },
+  NOR: { slug:'norris',      year:2024 }, PIA: { slug:'piastri',     year:2024 },
+  ALO: { slug:'alonso',      year:2024 }, STR: { slug:'stroll',      year:2024 },
+  GAS: { slug:'gasly',       year:2024 }, DOO: { slug:'doohan',      year:2025 },
+  BEA: { slug:'bearman',     year:2024 }, OCO: { slug:'ocon',        year:2024 },
+  ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2024 },
+  TSU: { slug:'tsunoda',     year:2024 }, HAD: { slug:'hadjar',      year:2025 },
+  HUL: { slug:'hulkenberg',  year:2024 }, BOR: { slug:'bortoleto',   year:2025 },
+};
+const _F1_CDN = 'https://media.formula1.com/image/upload/f_auto/q_auto/v1706188352/content/dam/fom-website/drivers';
+
+function _driverPhotoUrl(name, code) {
+  const entry = code && _DRIVER_PHOTO_MAP[code];
+  if (entry) return `${_F1_CDN}/${entry.year}Drivers/${entry.slug}.png`;
+  const slug = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+  return `${_F1_CDN}/2024Drivers/${slug}.png`;
+}
+
 function _renderHero(driver, profile, teamColor) {
-  const photoSlug = driver.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
-  const photoUrl = `https://media.formula1.com/image/upload/f_auto/q_auto/v1677244953/content/dam/fom-website/drivers/2026Drivers/${photoSlug}/${photoSlug}01.avif`;
+  const photoUrl = _driverPhotoUrl(driver.name, driver.code);
 
   return `
     <div class="garage-hero" style="--team-color:${teamColor}">
