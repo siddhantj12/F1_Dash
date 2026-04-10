@@ -176,14 +176,14 @@ function setStatus(message, isLoading = false) {
 // Driver code → { slug, year } mapping for F1 CDN photos
 // URL format: https://media.formula1.com/image/upload/f_auto/q_auto/v1706188352/content/dam/fom-website/drivers/{year}Drivers/{slug}.png
 const _DRIVER_PHOTO = {
-    VER: { slug:'verstappen',  year:2024 }, LAW: { slug:'lawson',      year:2024 },
+    VER: { slug:'verstappen',  year:2024 }, LAW: { slug:'lawson',      year:2025 },
     LEC: { slug:'leclerc',     year:2024 }, HAM: { slug:'hamilton',    year:2025 },
     RUS: { slug:'russell',     year:2024 }, ANT: { slug:'antonelli',   year:2025 },
     NOR: { slug:'norris',      year:2024 }, PIA: { slug:'piastri',     year:2024 },
     ALO: { slug:'alonso',      year:2024 }, STR: { slug:'stroll',      year:2024 },
     GAS: { slug:'gasly',       year:2024 }, DOO: { slug:'doohan',      year:2025 },
     BEA: { slug:'bearman',     year:2024 }, OCO: { slug:'ocon',        year:2024 },
-    ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2024 },
+    ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2025 },
     TSU: { slug:'tsunoda',     year:2024 }, HAD: { slug:'hadjar',      year:2025 },
     HUL: { slug:'hulkenberg',  year:2024 }, BOR: { slug:'bortoleto',   year:2025 },
 };
