@@ -18,6 +18,7 @@ import { createAuth0Client } from 'https://cdn.jsdelivr.net/npm/@auth0/auth0-spa
 
 let _client = null;
 let _cfg = null; // resolved lazily after /api/auth0-config fetch completes
+let _audience = null; // stored after config resolves
 
 async function _getConfig() {
   if (_cfg) return _cfg;
@@ -30,12 +31,17 @@ async function _getConfig() {
   return window.AUTH0_CONFIG || {};
 }
 
+function _tokenOpts() {
+  return _audience ? { authorizationParams: { audience: _audience } } : {};
+}
+
 const Auth = {
   isAuthenticated: false,
   user: null,
 
   async init() {
     const { domain, clientId, redirectUri, audience } = await _getConfig();
+    _audience = audience || null;
 
     if (!domain || !clientId) {
       console.warn('[Auth] AUTH0_CONFIG not set — auth disabled');
@@ -78,7 +84,7 @@ const Auth = {
         localStorage.setItem('f1dash_auth', '1');
         if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
         try {
-          const t = await _client.getTokenSilently();
+          const t = await _client.getTokenSilently(_tokenOpts());
           if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
         } catch {}
         window.dispatchEvent(new CustomEvent('auth:login', { detail: { user: Auth.user } }));
@@ -87,7 +93,7 @@ const Auth = {
       }
     } else {
       try {
-        const t = await _client.getTokenSilently();
+        const t = await _client.getTokenSilently(_tokenOpts());
         Auth.isAuthenticated = true;
         Auth.user = await _client.getUser();
         localStorage.setItem('f1dash_auth', '1');
@@ -147,7 +153,7 @@ const Auth = {
     if (!Auth.isAuthenticated) return null;
     if (_client) {
       try {
-        const t = await _client.getTokenSilently();
+        const t = await _client.getTokenSilently(_tokenOpts());
         if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
         return t;
       } catch {}
