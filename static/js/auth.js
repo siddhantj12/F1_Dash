@@ -43,20 +43,27 @@ const Auth = {
       return;
     }
 
+    const clientOpts = (aud) => ({
+      domain,
+      clientId,
+      authorizationParams: {
+        redirect_uri: redirectUri || window.location.origin,
+        ...(aud ? { audience: aud } : {}),
+      },
+      cacheLocation: 'localstorage',
+    });
+
     try {
-      _client = await createAuth0Client({
-        domain,
-        clientId,
-        authorizationParams: {
-          redirect_uri: redirectUri || window.location.origin,
-          ...(audience ? { audience } : {}),
-        },
-        cacheLocation: 'localstorage',
-      });
+      _client = await createAuth0Client(clientOpts(audience));
     } catch (e) {
-      console.error('[Auth] createAuth0Client failed:', e);
-      window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null, isAuthenticated: false } }));
-      return;
+      console.warn('[Auth] createAuth0Client with audience failed, retrying without:', e.message);
+      try {
+        _client = await createAuth0Client(clientOpts(null));
+      } catch (e2) {
+        console.error('[Auth] createAuth0Client failed:', e2);
+        window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null, isAuthenticated: false } }));
+        return;
+      }
     }
 
     // Handle the callback after Auth0 redirect
