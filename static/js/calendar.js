@@ -168,7 +168,46 @@ function _initGlobe(containerId) {
   return globe;
 }
 
+// ─── Track layout SVG ─────────────────────────────────────────────────────────
+
+// Maps 2026 round number → 2024 round that has the same circuit in Supabase
+const _TRACK_REF = {
+  1:3, 2:5, 3:4, 4:1, 5:2, 6:6, 7:7, 8:8, 9:10, 10:9,
+  11:11, 12:12, 13:14, 14:13, 15:15, 16:16, 17:17, 18:18,
+  19:19, 20:20, 21:21, 22:22, 23:23, 24:24,
+};
+
+function _coordsToSvg(coords, W = 200, H = 130, PAD = 10) {
+  const xs = coords.x, ys = coords.y;
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scaleX = (W - 2 * PAD) / (maxX - minX || 1);
+  const scaleY = (H - 2 * PAD) / (maxY - minY || 1);
+  const scale  = Math.min(scaleX, scaleY);
+  const offX = PAD + ((W - 2 * PAD) - (maxX - minX) * scale) / 2;
+  const offY = PAD + ((H - 2 * PAD) - (maxY - minY) * scale) / 2;
+  const pts = xs.map((x, i) =>
+    `${(offX + (x - minX) * scale).toFixed(1)},${(offY + (ys[i] - minY) * scale).toFixed(1)}`
+  ).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
+    <polyline points="${pts}" fill="none" stroke="#E10600" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+    <polyline points="${pts}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+async function _loadTrackSvg(round) {
+  const ref = _TRACK_REF[round] || round;
+  try {
+    const resp = await fetch(`/api/track/2024/${ref}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return _coordsToSvg(data.coordinates);
+  } catch { return null; }
+}
+
 // ─── Track info panel ─────────────────────────────────────────────────────────
+
+let _panelCollapsed = false;
 
 function _renderTrackPanel(race) {
   const existing = document.getElementById('cal2-track-panel');
@@ -181,24 +220,37 @@ function _renderTrackPanel(race) {
 
   const panel = document.createElement('div');
   panel.id = 'cal2-track-panel';
+  if (_panelCollapsed) panel.classList.add('ctp-collapsed');
   panel.innerHTML = `
-    <div class="ctp-header">
+    <div class="ctp-header" id="ctp-header-btn" style="cursor:pointer;" title="Toggle details">
       <span class="ctp-flag">${race.flag}</span>
       <div class="ctp-title-wrap">
         <div class="ctp-name">${race.name}</div>
         <div class="ctp-circuit">${race.circuit} · ${race.city}, ${race.country}</div>
       </div>
       <span class="ctp-status" style="color:${statusColor};border-color:${statusColor}33;background:${statusColor}11">${statusLabel}</span>
+      <button class="ctp-toggle-btn" aria-label="Toggle panel" title="Collapse / expand">
+        <svg class="ctp-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+      </button>
     </div>
-    <div class="ctp-stats">
-      <div class="ctp-stat"><div class="ctp-stat-val">${race.km} km</div><div class="ctp-stat-label">Circuit Length</div></div>
-      <div class="ctp-stat"><div class="ctp-stat-val">${race.laps}</div><div class="ctp-stat-label">Laps</div></div>
-      <div class="ctp-stat"><div class="ctp-stat-val">${(race.km * race.laps).toFixed(1)} km</div><div class="ctp-stat-label">Race Distance</div></div>
-      <div class="ctp-stat"><div class="ctp-stat-val">${race.turns}</div><div class="ctp-stat-label">Corners</div></div>
-      <div class="ctp-stat"><div class="ctp-stat-val">${race.drs}</div><div class="ctp-stat-label">DRS Zones</div></div>
-      <div class="ctp-stat ctp-stat--record">
-        <div class="ctp-stat-val">${race.record}</div>
-        <div class="ctp-stat-label">Lap Record · ${race.recordBy.split(' ').pop()} ${race.recordYear}</div>
+    <div class="ctp-body">
+      <div class="ctp-inner">
+        <div class="ctp-track-wrap">
+          <div class="ctp-track-svg" id="ctp-track-svg"><div class="ctp-track-loading">Loading layout…</div></div>
+        </div>
+        <div class="ctp-stats">
+          <div class="ctp-stat"><div class="ctp-stat-val">${race.km} km</div><div class="ctp-stat-label">Length</div></div>
+          <div class="ctp-stat"><div class="ctp-stat-val">${race.laps}</div><div class="ctp-stat-label">Laps</div></div>
+          <div class="ctp-stat"><div class="ctp-stat-val">${(race.km * race.laps).toFixed(1)}</div><div class="ctp-stat-label">Race km</div></div>
+          <div class="ctp-stat"><div class="ctp-stat-val">${race.turns}</div><div class="ctp-stat-label">Corners</div></div>
+          <div class="ctp-stat"><div class="ctp-stat-val">${race.drs}</div><div class="ctp-stat-label">DRS</div></div>
+          <div class="ctp-stat ctp-stat--record">
+            <div class="ctp-stat-val">${race.record}</div>
+            <div class="ctp-stat-label">Record · ${race.recordBy.split(' ').pop()} ${race.recordYear}</div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -208,6 +260,19 @@ function _renderTrackPanel(race) {
     globePanel.appendChild(panel);
     requestAnimationFrame(() => panel.classList.add('ctp-visible'));
   }
+
+  // Toggle collapse on header click
+  const headerBtn = panel.querySelector('#ctp-header-btn');
+  headerBtn.addEventListener('click', () => {
+    _panelCollapsed = !_panelCollapsed;
+    panel.classList.toggle('ctp-collapsed', _panelCollapsed);
+  });
+
+  // Load track layout asynchronously
+  _loadTrackSvg(race.round).then(svg => {
+    const el = document.getElementById('ctp-track-svg');
+    if (el) el.innerHTML = svg || '<div class="ctp-track-loading" style="color:#444">Layout unavailable</div>';
+  });
 }
 
 // ─── Select + fly ─────────────────────────────────────────────────────────────

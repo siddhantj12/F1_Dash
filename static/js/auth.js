@@ -73,9 +73,17 @@ const Auth = {
         Auth.isAuthenticated = true;
         Auth.user = await _client.getUser();
       } catch {
-        // Not logged in — that's fine, anonymous browsing is supported
-        Auth.isAuthenticated = false;
-        Auth.user = null;
+        // Token renewal failed — but the user may still be cached (e.g. refresh
+        // tokens not enabled, or third-party cookies blocked). Fall back to
+        // checking for a cached user object before declaring anonymous.
+        const cached = await _client.getUser().catch(() => null);
+        if (cached) {
+          Auth.isAuthenticated = true;
+          Auth.user = cached;
+        } else {
+          Auth.isAuthenticated = false;
+          Auth.user = null;
+        }
       }
     }
 

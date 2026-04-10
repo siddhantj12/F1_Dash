@@ -173,8 +173,23 @@ function setStatus(message, isLoading = false) {
     }
 }
 
-function _driverPhotoUrl(name) {
-    const slug = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+// Known slug overrides for drivers whose CDN slug differs from their display name
+const _DRIVER_SLUG = {
+    ALB: 'alexanderalbon',   ANT: 'andreakimiantonelli',
+    VER: 'maxverstappen',    LAW: 'liamlawson',
+    LEC: 'charlesleclerc',  HAM: 'lewishamilton',
+    RUS: 'georgerussell',    NOR: 'landonorris',
+    PIA: 'oscarpiastri',     ALO: 'fernandoalonso',
+    STR: 'lancestroll',      GAS: 'pierregasly',
+    DOO: 'jackdoohan',       BEA: 'oliverbearman',
+    OCO: 'estebanocon',      SAI: 'carlossainz',
+    TSU: 'yukitsunoda',      HAD: 'isackhadjar',
+    HUL: 'nicohulkenberg',   BOR: 'gabrielbortoleto',
+};
+
+function _driverPhotoUrl(name, code) {
+    const slug = _DRIVER_SLUG[code]
+        || name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
     return `https://media.formula1.com/image/upload/f_auto/q_auto/v1677244953/content/dam/fom-website/drivers/2026Drivers/${slug}/${slug}01.avif`;
 }
 
@@ -189,7 +204,7 @@ function _setAvatarPhoto(el, driver, color) {
 
     if (driver.name) {
         el.innerHTML = `
-            <img src="${_driverPhotoUrl(driver.name)}" alt="${driver.name}"
+            <img src="${_driverPhotoUrl(driver.name, driver.code)}" alt="${driver.name}"
                  style="width:100%;height:100%;object-fit:cover;object-position:top center;"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:0.75em;font-weight:700;letter-spacing:0.05em">${code}</span>

@@ -95,9 +95,22 @@ function _saveGuestProfile(prefs) {
 
 // ─── Driver photo helpers ─────────────────────────────────────────────────────
 
-function _driverPhotoUrl(driverName) {
-  // F1 CDN format: FirstnameLastname all lowercase, spaces removed
-  const slug = driverName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+const _DRIVER_SLUG_MAP = {
+  ALB: 'alexanderalbon',   ANT: 'andreakimiantonelli',
+  VER: 'maxverstappen',    LAW: 'liamlawson',
+  LEC: 'charlesleclerc',  HAM: 'lewishamilton',
+  RUS: 'georgerussell',    NOR: 'landonorris',
+  PIA: 'oscarpiastri',     ALO: 'fernandoalonso',
+  STR: 'lancestroll',      GAS: 'pierregasly',
+  DOO: 'jackdoohan',       BEA: 'oliverbearman',
+  OCO: 'estebanocon',      SAI: 'carlossainz',
+  TSU: 'yukitsunoda',      HAD: 'isackhadjar',
+  HUL: 'nicohulkenberg',   BOR: 'gabrielbortoleto',
+};
+
+function _driverPhotoUrl(driverName, code) {
+  const slug = (code && _DRIVER_SLUG_MAP[code])
+    || driverName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
   return `https://media.formula1.com/image/upload/f_auto/q_auto/v1677244953/content/dam/fom-website/drivers/2026Drivers/${slug}/${slug}01.avif`;
 }
 
@@ -347,7 +360,7 @@ async function _showOnboardingModal() {
         <div class="ob-driver-card ${isSelected ? 'selected' : ''}" data-code="${d.code}" style="--team-color:${color}">
           <div class="ob-driver-photo-wrap">
             <img
-              src="${_driverPhotoUrl(d.name)}"
+              src="${_driverPhotoUrl(d.name, d.code)}"
               alt="${d.name}"
               class="ob-driver-photo"
               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
