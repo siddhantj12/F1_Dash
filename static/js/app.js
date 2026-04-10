@@ -184,7 +184,7 @@ const _DRIVER_PHOTO = {
     GAS: { slug:'gasly',       year:2024 }, DOO: { slug:'doohan',      year:2025 },
     BEA: { slug:'bearman',     year:2024 }, OCO: { slug:'ocon',        year:2024 },
     ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2025 },
-    TSU: { slug:'tsunoda',     year:2024 }, HAD: { slug:'hadjar',      year:2025 },
+    LIN: { slug:'lindblad',    year:2025 }, HAD: { slug:'hadjar',      year:2025 },
     HUL: { slug:'hulkenberg',  year:2024 }, BOR: { slug:'bortoleto',   year:2025 },
 };
 
@@ -349,7 +349,7 @@ const TEAM_COLOR_MAP = {
     'AlphaTauri': '#5E8FAA', 'RB': '#5E8FAA',
     'Haas F1 Team': '#B6BABD', 'Haas': '#B6BABD',
     'Williams': '#64C4FF', 'Alfa Romeo': '#C92D4B',
-    'Kick Sauber': '#00CF46',
+    'Kick Sauber': '#00CF46', 'Audi': '#B3B4B4',
 };
 
 function renderStandingsRows(positions) {

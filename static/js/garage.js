@@ -97,7 +97,7 @@ const _DRIVER_PHOTO_MAP = {
   GAS: { slug:'gasly',       year:2024 }, DOO: { slug:'doohan',      year:2025 },
   BEA: { slug:'bearman',     year:2024 }, OCO: { slug:'ocon',        year:2024 },
   ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2025 },
-  TSU: { slug:'tsunoda',     year:2024 }, HAD: { slug:'hadjar',      year:2025 },
+  LIN: { slug:'lindblad',    year:2025 }, HAD: { slug:'hadjar',      year:2025 },
   HUL: { slug:'hulkenberg',  year:2024 }, BOR: { slug:'bortoleto',   year:2025 },
 };
 const _F1_CDN = 'https://media.formula1.com/image/upload/f_auto/q_auto/v1706188352/content/dam/fom-website/drivers';

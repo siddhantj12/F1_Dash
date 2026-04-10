@@ -26,7 +26,7 @@ const TEAM_COLORS = {
   haas:         '#B6BABD',
   williams:     '#64C4FF',
   rb:           '#6692FF',
-  sauber:       '#52E252',
+  audi:         '#B3B4B4',
 };
 
 // Fallback 2026 driver roster (used if /api/drivers/2026/R fails to load)
@@ -47,10 +47,10 @@ const FALLBACK_DRIVERS = [
   { code: 'OCO', name: 'Esteban Ocon',        number: 31, team: 'haas',         teamName: 'Haas' },
   { code: 'ALB', name: 'Alex Albon',          number: 23, team: 'williams',     teamName: 'Williams' },
   { code: 'SAI', name: 'Carlos Sainz',        number: 55, team: 'williams',     teamName: 'Williams' },
-  { code: 'TSU', name: 'Yuki Tsunoda',        number: 22, team: 'rb',           teamName: 'RB' },
-  { code: 'HAD', name: 'Isack Hadjar',        number: 6,  team: 'rb',           teamName: 'RB' },
-  { code: 'HUL', name: 'Nico Hulkenberg',     number: 27, team: 'sauber',       teamName: 'Sauber' },
-  { code: 'BOR', name: 'Gabriel Bortoleto',   number: 5,  team: 'sauber',       teamName: 'Sauber' },
+  { code: 'LIN', name: 'Arvid Lindblad',      number: 6,  team: 'rb',           teamName: 'RB' },
+  { code: 'HAD', name: 'Isack Hadjar',        number: 22, team: 'rb',           teamName: 'RB' },
+  { code: 'HUL', name: 'Nico Hulkenberg',     number: 27, team: 'audi',         teamName: 'Audi' },
+  { code: 'BOR', name: 'Gabriel Bortoleto',   number: 5,  team: 'audi',         teamName: 'Audi' },
 ];
 
 const FALLBACK_TEAMS = [
@@ -63,7 +63,7 @@ const FALLBACK_TEAMS = [
   { id: 'haas',         name: 'Haas' },
   { id: 'williams',     name: 'Williams' },
   { id: 'rb',           name: 'RB' },
-  { id: 'sauber',       name: 'Sauber' },
+  { id: 'audi',         name: 'Audi' },
 ];
 
 let _profile = null;
@@ -104,7 +104,7 @@ const _DRIVER_PHOTO_MAP = {
   GAS: { slug:'gasly',       year:2024 }, DOO: { slug:'doohan',      year:2025 },
   BEA: { slug:'bearman',     year:2024 }, OCO: { slug:'ocon',        year:2024 },
   ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2025 },
-  TSU: { slug:'tsunoda',     year:2024 }, HAD: { slug:'hadjar',      year:2025 },
+  LIN: { slug:'lindblad',    year:2025 }, HAD: { slug:'hadjar',      year:2025 },
   HUL: { slug:'hulkenberg',  year:2024 }, BOR: { slug:'bortoleto',   year:2025 },
 };
 const _F1_CDN = 'https://media.formula1.com/image/upload/f_auto/q_auto/v1706188352/content/dam/fom-website/drivers';
