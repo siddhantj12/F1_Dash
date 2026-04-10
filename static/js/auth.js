@@ -43,15 +43,21 @@ const Auth = {
       return;
     }
 
-    _client = await createAuth0Client({
-      domain,
-      clientId,
-      authorizationParams: {
-        redirect_uri: redirectUri || window.location.origin,
-        ...(audience ? { audience } : {}),
-      },
-      cacheLocation: 'localstorage',
-    });
+    try {
+      _client = await createAuth0Client({
+        domain,
+        clientId,
+        authorizationParams: {
+          redirect_uri: redirectUri || window.location.origin,
+          ...(audience ? { audience } : {}),
+        },
+        cacheLocation: 'localstorage',
+      });
+    } catch (e) {
+      console.error('[Auth] createAuth0Client failed:', e);
+      window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null, isAuthenticated: false } }));
+      return;
+    }
 
     // Handle the callback after Auth0 redirect
     const query = window.location.search;
@@ -106,9 +112,11 @@ const Auth = {
   },
 
   async login() {
-    if (!_client) { console.warn('[Auth] client not initialised'); return; }
+    // Wait up to 3s for client to initialise (it boots async on page load)
+    for (let i = 0; i < 30 && !_client; i++) await new Promise(r => setTimeout(r, 100));
+    if (!_client) { console.error('[Auth] client not initialised after wait'); return; }
     const { redirectUri, audience } = await _getConfig();
-    _client.loginWithRedirect({
+    await _client.loginWithRedirect({
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
         ...(audience ? { audience } : {}),
