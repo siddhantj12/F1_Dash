@@ -55,17 +55,22 @@ def _decode_token(token: str) -> dict:
     if not rsa_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to find matching signing key")
 
-    try:
-        payload = jwt.decode(
-            token,
-            rsa_key,
-            algorithms=["RS256"],
-            audience=settings.auth0_audience,
-            issuer=f"https://{settings.auth0_domain}/",
-        )
-        return payload
-    except JWTError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token validation failed: {e}")
+    # Try configured API audience first (access token), then fall back to clientId (ID token)
+    audiences_to_try = list({settings.auth0_audience, settings.auth0_client_id} - {""})
+    last_error = None
+    for aud in audiences_to_try:
+        try:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=["RS256"],
+                audience=aud,
+                issuer=f"https://{settings.auth0_domain}/",
+            )
+            return payload
+        except JWTError as e:
+            last_error = e
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token validation failed: {last_error}")
 
 
 async def get_current_user(
@@ -82,7 +87,11 @@ async def get_current_user(
 
     payload = _decode_token(credentials.credentials)
     request.state.user_sub = payload.get("sub")
-    request.state.user_email = payload.get("email") or payload.get(f"{settings.auth0_audience}/email", "")
+    request.state.user_email = (
+        payload.get("email")
+        or payload.get(f"{settings.auth0_audience}/email", "")
+        or ""
+    )
     return payload
 
 
