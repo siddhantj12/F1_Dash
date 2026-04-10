@@ -201,10 +201,10 @@ const Profile = {
   async load() {
     const token = await Auth.getToken();
 
-    // No token — check if we have a cached authenticated profile (token refresh failed but user was logged in)
+    // No token — check if we have a cached authenticated profile
     if (!token) {
       if (Auth.isAuthenticated) {
-        // Try cached profile from a previous successful fetch
+        // 1. Try cached /api/me response from a previous successful fetch
         try {
           const cached = JSON.parse(localStorage.getItem('f1dash_profile') || 'null');
           if (cached && !cached.is_guest) {
@@ -214,6 +214,24 @@ const Profile = {
             return _profile;
           }
         } catch {}
+        // 2. Construct a minimal profile from the Auth0 user object so user appears logged in
+        const auth0User = Auth.getUser();
+        if (auth0User) {
+          _profile = {
+            display_name: auth0User.name || auth0User.email || 'F1 Fan',
+            email: auth0User.email || '',
+            avatar_url: auth0User.picture || null,
+            favorite_driver_code: null,
+            favorite_team_id: null,
+            onboarding_complete: false,
+            is_guest: false,
+          };
+          window.userProfile = _profile;
+          _updateSidebarFooter(_profile);
+          // Show onboarding since we have no preferences yet
+          await _showOnboardingModal();
+          return _profile;
+        }
       }
       const guest = _loadGuestProfile();
       _profile = guest || null;

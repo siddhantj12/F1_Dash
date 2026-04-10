@@ -50,7 +50,6 @@ const Auth = {
         redirect_uri: redirectUri || window.location.origin,
       },
       cacheLocation: 'localstorage',
-      useRefreshTokens: true,
     });
 
     // Handle the callback after Auth0 redirect
@@ -64,17 +63,22 @@ const Auth = {
         // Persist flag so silent-auth failures don't immediately log the user out
         localStorage.setItem('f1dash_auth', '1');
         if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
+        try {
+          const t = await _client.getTokenSilently();
+          if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
+        } catch {}
         window.dispatchEvent(new CustomEvent('auth:login', { detail: { user: Auth.user } }));
       } catch (e) {
         console.error('[Auth] handleRedirectCallback error:', e);
       }
     } else {
       try {
-        await _client.getTokenSilently();
+        const t = await _client.getTokenSilently();
         Auth.isAuthenticated = true;
         Auth.user = await _client.getUser();
         localStorage.setItem('f1dash_auth', '1');
         if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
+        if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
       } catch {
         // getTokenSilently() failed (refresh tokens not configured or cookies blocked).
         // Use the SDK's cached user object, then fall back to our own localStorage copy.
@@ -117,16 +121,25 @@ const Auth = {
     localStorage.removeItem('f1dash_auth');
     localStorage.removeItem('f1dash_user');
     localStorage.removeItem('f1dash_profile');
+    sessionStorage.removeItem('f1dash_token');
+    sessionStorage.removeItem('f1dash_token_exp');
     _client.logout({ logoutParams: { returnTo: window.location.origin } });
   },
 
   async getToken() {
-    if (!_client || !Auth.isAuthenticated) return null;
-    try {
-      return await _client.getTokenSilently();
-    } catch {
-      return null;
+    if (!Auth.isAuthenticated) return null;
+    if (_client) {
+      try {
+        const t = await _client.getTokenSilently();
+        if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
+        return t;
+      } catch {}
     }
+    // Fallback: session-cached token (valid within same browser session until expiry)
+    const cached = sessionStorage.getItem('f1dash_token');
+    const exp = parseInt(sessionStorage.getItem('f1dash_token_exp') || '0');
+    if (cached && Date.now() < exp) return cached;
+    return null;
   },
 
   getUser() {
