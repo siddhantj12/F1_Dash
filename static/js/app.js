@@ -177,7 +177,7 @@ function setStatus(message, isLoading = false) {
 // URL format: https://media.formula1.com/image/upload/f_auto/q_auto/v1706188352/content/dam/fom-website/drivers/{year}Drivers/{slug}.png
 const _DRIVER_PHOTO = {
     VER: { slug:'verstappen',  year:2024 }, LAW: { slug:'lawson',      year:2024 },
-    LEC: { slug:'leclerc',     year:2024 }, HAM: { slug:'hamilton',    year:2024 },
+    LEC: { slug:'leclerc',     year:2024 }, HAM: { slug:'hamilton',    year:2025 },
     RUS: { slug:'russell',     year:2024 }, ANT: { slug:'antonelli',   year:2025 },
     NOR: { slug:'norris',      year:2024 }, PIA: { slug:'piastri',     year:2024 },
     ALO: { slug:'alonso',      year:2024 }, STR: { slug:'stroll',      year:2024 },
