@@ -71,6 +71,8 @@ let _profile = null;
 // ─── Guest (localStorage) profile ────────────────────────────────────────────
 
 const GUEST_KEY = 'f1dash_guest_prefs';
+const AUTH_PROFILE_KEY = 'f1dash_profile';
+const PENDING_PROFILE_SYNC_KEY = 'f1dash_profile_pending_sync';
 
 function _loadGuestProfile() {
   try {
@@ -91,6 +93,77 @@ function _saveGuestProfile(prefs) {
   };
   localStorage.setItem(GUEST_KEY, JSON.stringify(updated));
   return updated;
+}
+
+function _loadCachedAuthProfile() {
+  try {
+    const raw = localStorage.getItem(AUTH_PROFILE_KEY);
+    if (!raw) return null;
+    const profile = JSON.parse(raw);
+    return profile?.is_guest ? null : profile;
+  } catch {
+    return null;
+  }
+}
+
+function _saveCachedAuthProfile(profile) {
+  if (!profile || profile.is_guest) return;
+  localStorage.setItem(AUTH_PROFILE_KEY, JSON.stringify(profile));
+}
+
+function _loadPendingProfileSync() {
+  try {
+    const raw = localStorage.getItem(PENDING_PROFILE_SYNC_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function _savePendingProfileSync(update) {
+  localStorage.setItem(PENDING_PROFILE_SYNC_KEY, JSON.stringify(update));
+}
+
+function _clearPendingProfileSync() {
+  localStorage.removeItem(PENDING_PROFILE_SYNC_KEY);
+}
+
+function _buildAuthenticatedProfileFallback(overrides = {}) {
+  const cachedProfile = _loadCachedAuthProfile() || {};
+  const auth0User = Auth.getUser() || {};
+
+  if (!Object.keys(cachedProfile).length && !auth0User.sub && !auth0User.email && !auth0User.name) {
+    return null;
+  }
+
+  return {
+    ...cachedProfile,
+    display_name: overrides.display_name ?? cachedProfile.display_name ?? auth0User.name ?? auth0User.email ?? 'F1 Fan',
+    email: overrides.email ?? cachedProfile.email ?? auth0User.email ?? '',
+    avatar_url: overrides.avatar_url ?? cachedProfile.avatar_url ?? auth0User.picture ?? null,
+    favorite_driver_code: overrides.favorite_driver_code ?? cachedProfile.favorite_driver_code ?? null,
+    favorite_team_id: overrides.favorite_team_id ?? cachedProfile.favorite_team_id ?? null,
+    onboarding_complete: overrides.onboarding_complete ?? cachedProfile.onboarding_complete ?? false,
+    is_guest: false,
+  };
+}
+
+async function _flushPendingProfileSync(token) {
+  const pending = _loadPendingProfileSync();
+  if (!pending || !token) return null;
+
+  const resp = await fetch('/api/me/preferences', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(pending),
+  });
+  if (!resp.ok) throw new Error(`/api/me/preferences returned ${resp.status}`);
+
+  _clearPendingProfileSync();
+  return resp.json();
 }
 
 // ─── Driver photo helpers ─────────────────────────────────────────────────────
@@ -201,35 +274,17 @@ const Profile = {
   async load() {
     const token = await Auth.getToken();
 
-    // No token — check if we have a cached authenticated profile
     if (!token) {
       if (Auth.isAuthenticated) {
-        // 1. Try cached /api/me response from a previous successful fetch
-        try {
-          const cached = JSON.parse(localStorage.getItem('f1dash_profile') || 'null');
-          if (cached && !cached.is_guest) {
-            _profile = cached;
-            window.userProfile = _profile;
-            _updateSidebarFooter(_profile);
-            return _profile;
-          }
-        } catch {}
-        // 2. Construct a minimal profile from the Auth0 user object so user appears logged in
-        const auth0User = Auth.getUser();
-        if (auth0User) {
-          _profile = {
-            display_name: auth0User.name || auth0User.email || 'F1 Fan',
-            email: auth0User.email || '',
-            avatar_url: auth0User.picture || null,
-            favorite_driver_code: null,
-            favorite_team_id: null,
-            onboarding_complete: false,
-            is_guest: false,
-          };
+        const fallbackProfile = _buildAuthenticatedProfileFallback();
+        if (fallbackProfile) {
+          _profile = fallbackProfile;
           window.userProfile = _profile;
+          _saveCachedAuthProfile(_profile);
           _updateSidebarFooter(_profile);
-          // Show onboarding since we have no preferences yet
-          await _showOnboardingModal();
+          if (!_profile.onboarding_complete) {
+            await _showOnboardingModal();
+          }
           return _profile;
         }
       }
@@ -246,9 +301,15 @@ const Profile = {
       });
       if (!resp.ok) throw new Error(`/api/me returned ${resp.status}`);
       _profile = await resp.json();
+
+      const syncedProfile = await _flushPendingProfileSync(token).catch((err) => {
+        console.warn('[Profile] pending sync failed:', err);
+        return null;
+      });
+      if (syncedProfile) _profile = syncedProfile;
+
       window.userProfile = _profile;
-      // Cache for next load if token refresh fails
-      localStorage.setItem('f1dash_profile', JSON.stringify(_profile));
+      _saveCachedAuthProfile(_profile);
       _updateSidebarFooter(_profile);
 
       if (!_profile.onboarding_complete) {
@@ -257,15 +318,42 @@ const Profile = {
       return _profile;
     } catch (e) {
       console.error('[Profile] load error:', e);
+      if (Auth.isAuthenticated) {
+        const fallbackProfile = _buildAuthenticatedProfileFallback();
+        if (fallbackProfile) {
+          _profile = fallbackProfile;
+          window.userProfile = _profile;
+          _saveCachedAuthProfile(_profile);
+          _updateSidebarFooter(_profile);
+          return _profile;
+        }
+      }
       return null;
     }
   },
 
   async savePreferences({ driverCode, teamId, complete = true, displayName } = {}) {
     const token = await Auth.getToken();
+    const body = {
+      favorite_driver_code: driverCode || null,
+      favorite_team_id: teamId || null,
+      onboarding_complete: complete,
+      ...(displayName ? { display_name: displayName } : {}),
+    };
 
-    // Guest mode: no auth token → save to localStorage
     if (!token) {
+      if (Auth.isAuthenticated) {
+        const optimisticProfile = _buildAuthenticatedProfileFallback(body);
+        if (optimisticProfile) {
+          _profile = optimisticProfile;
+          window.userProfile = _profile;
+          _saveCachedAuthProfile(_profile);
+          _savePendingProfileSync(body);
+          _updateSidebarFooter(_profile);
+          return _profile;
+        }
+      }
+
       const guest = _saveGuestProfile({
         favorite_driver_code: driverCode || null,
         favorite_team_id: teamId || null,
@@ -278,13 +366,6 @@ const Profile = {
       return _profile;
     }
 
-    const body = {
-      favorite_driver_code: driverCode || null,
-      favorite_team_id: teamId || null,
-      onboarding_complete: complete,
-      ...(displayName ? { display_name: displayName } : {}),
-    };
-
     const resp = await fetch('/api/me/preferences', {
       method: 'PUT',
       headers: {
@@ -296,6 +377,8 @@ const Profile = {
     if (!resp.ok) throw new Error(`/api/me/preferences returned ${resp.status}`);
     _profile = await resp.json();
     window.userProfile = _profile;
+    _clearPendingProfileSync();
+    _saveCachedAuthProfile(_profile);
     _updateSidebarFooter(_profile);
     return _profile;
   },

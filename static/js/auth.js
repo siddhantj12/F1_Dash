@@ -1,28 +1,18 @@
 /**
  * auth.js — Auth0 SPA SDK wrapper
- *
- * Exposes:
- *   Auth.init()          — call once on page load; performs silent auth check
- *   Auth.login()         — redirect to Auth0 Universal Login
- *   Auth.logout()        — clear session and redirect to home
- *   Auth.getToken()      — returns access token string (or null if anonymous)
- *   Auth.getUser()       — returns Auth0 user object (or null)
- *   Auth.isAuthenticated — boolean
- *
- * Dispatches:
- *   window 'auth:ready'  — after init() completes (detail: { user, isAuthenticated })
- *   window 'auth:login'  — after a successful login callback (detail: { user })
  */
 
 import { createAuth0Client } from 'https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.1.3/dist/auth0-spa-js.production.esm.js';
 
 let _client = null;
-let _cfg = null; // resolved lazily after /api/auth0-config fetch completes
-let _audience = null; // stored after config resolves
+let _cfg = null;
+const ACCESS_TOKEN_KEY = 'f1dash_token';
+const ACCESS_TOKEN_EXP_KEY = 'f1dash_token_exp';
+const ID_TOKEN_KEY = 'f1dash_id_token';
+const ID_TOKEN_EXP_KEY = 'f1dash_id_token_exp';
 
 async function _getConfig() {
   if (_cfg) return _cfg;
-  // Wait up to 2s for index.html's fetch('/api/auth0-config') to populate window.AUTH0_CONFIG
   for (let i = 0; i < 20; i++) {
     const c = window.AUTH0_CONFIG || {};
     if (c.domain && c.clientId) { _cfg = c; return _cfg; }
@@ -31,8 +21,99 @@ async function _getConfig() {
   return window.AUTH0_CONFIG || {};
 }
 
-function _tokenOpts() {
-  return _audience ? { authorizationParams: { audience: _audience } } : {};
+function _authorizationParams(cfg) {
+  return {
+    redirect_uri: cfg.redirectUri || window.location.origin,
+    ...(cfg.audience ? { audience: cfg.audience } : {}),
+    scope: 'openid profile email',
+  };
+}
+
+function _cacheToken(key, expKey, token, expiresAtMs = Date.now() + 3500000) {
+  if (!token) return null;
+  sessionStorage.setItem(key, token);
+  sessionStorage.setItem(expKey, String(expiresAtMs));
+  return token;
+}
+
+function _getCachedToken(key, expKey) {
+  const token = sessionStorage.getItem(key);
+  const expiresAt = Number(sessionStorage.getItem(expKey) || '0');
+  if (!token || Date.now() >= expiresAt) return null;
+  return token;
+}
+
+function _getAnyCachedToken() {
+  return (
+    _getCachedToken(ACCESS_TOKEN_KEY, ACCESS_TOKEN_EXP_KEY)
+    || _getCachedToken(ID_TOKEN_KEY, ID_TOKEN_EXP_KEY)
+  );
+}
+
+function _clearSessionTokens() {
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionStorage.removeItem(ACCESS_TOKEN_EXP_KEY);
+  sessionStorage.removeItem(ID_TOKEN_KEY);
+  sessionStorage.removeItem(ID_TOKEN_EXP_KEY);
+}
+
+function _persistAuthUser(user) {
+  localStorage.setItem('f1dash_auth', '1');
+  if (user) {
+    localStorage.setItem('f1dash_user', JSON.stringify(user));
+  }
+}
+
+function _clearPersistedAuth({ clearProfile = false } = {}) {
+  localStorage.removeItem('f1dash_auth');
+  localStorage.removeItem('f1dash_user');
+  if (clearProfile) {
+    localStorage.removeItem('f1dash_profile');
+    localStorage.removeItem('f1dash_profile_pending_sync');
+  }
+  _clearSessionTokens();
+}
+
+async function _restoreUser() {
+  if (_client) {
+    const sdkUser = await _client.getUser().catch(() => null);
+    if (sdkUser) return sdkUser;
+  }
+  try {
+    return JSON.parse(localStorage.getItem('f1dash_user') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+async function _cacheIdToken() {
+  if (!_client) return null;
+  const claims = await _client.getIdTokenClaims().catch(() => null);
+  const raw = claims?.__raw;
+  if (!raw) return null;
+  const expiresAtMs = claims?.exp ? claims.exp * 1000 : Date.now() + 3500000;
+  return _cacheToken(ID_TOKEN_KEY, ID_TOKEN_EXP_KEY, raw, expiresAtMs);
+}
+
+async function _getAccessToken() {
+  if (!_client) return null;
+  const token = await _client.getTokenSilently();
+  return _cacheToken(ACCESS_TOKEN_KEY, ACCESS_TOKEN_EXP_KEY, token);
+}
+
+async function _primeSessionTokens() {
+  try {
+    const accessToken = await _getAccessToken();
+    if (accessToken) return accessToken;
+  } catch (e) {
+    console.warn('[Auth] access token refresh failed:', e.error || e.message);
+  }
+
+  const idToken = await _cacheIdToken();
+  if (idToken) {
+    console.warn('[Auth] falling back to cached ID token for authenticated requests');
+  }
+  return idToken;
 }
 
 const Auth = {
@@ -40,8 +121,8 @@ const Auth = {
   user: null,
 
   async init() {
-    const { domain, clientId, redirectUri, audience } = await _getConfig();
-    _audience = audience || null;
+    const cfg = await _getConfig();
+    const { domain, clientId } = cfg;
 
     if (!domain || !clientId) {
       console.warn('[Auth] AUTH0_CONFIG not set — auth disabled');
@@ -49,73 +130,65 @@ const Auth = {
       return;
     }
 
-    const clientOpts = (aud) => ({
-      domain,
-      clientId,
-      authorizationParams: {
-        redirect_uri: redirectUri || window.location.origin,
-        ...(aud ? { audience: aud } : {}),
-      },
-      cacheLocation: 'localstorage',
-    });
-
     try {
-      _client = await createAuth0Client(clientOpts(audience));
+      _client = await createAuth0Client({
+        domain,
+        clientId,
+        cacheLocation: 'localstorage',
+        useRefreshTokens: true,
+        useRefreshTokensFallback: true,
+        authorizationParams: _authorizationParams(cfg),
+      });
+      console.log('[Auth] client created');
     } catch (e) {
-      console.warn('[Auth] createAuth0Client with audience failed, retrying without:', e.message);
+      console.error('[Auth] createAuth0Client failed:', e);
+      window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null, isAuthenticated: false } }));
+      return;
+    }
+
+    const query = new URLSearchParams(window.location.search);
+    const isCallback = query.has('code') && query.has('state');
+
+    if (isCallback) {
       try {
-        _client = await createAuth0Client(clientOpts(null));
-      } catch (e2) {
-        console.error('[Auth] createAuth0Client failed:', e2);
-        window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: null, isAuthenticated: false } }));
-        return;
+        await _client.handleRedirectCallback();
+      } catch (e) {
+        console.error('[Auth] handleRedirectCallback error:', e);
+      } finally {
+        const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
+        window.history.replaceState({}, document.title, cleanUrl);
       }
     }
 
-    // Handle the callback after Auth0 redirect
-    const query = window.location.search;
-    if (query.includes('code=') && query.includes('state=')) {
-      try {
-        await _client.handleRedirectCallback();
-        window.history.replaceState({}, document.title, window.location.pathname);
-        Auth.isAuthenticated = true;
-        Auth.user = await _client.getUser();
-        // Persist flag so silent-auth failures don't immediately log the user out
-        localStorage.setItem('f1dash_auth', '1');
-        if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
-        try {
-          const t = await _client.getTokenSilently(_tokenOpts());
-          if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
-        } catch {}
+    let sdkAuthenticated = false;
+    try {
+      sdkAuthenticated = await _client.isAuthenticated();
+    } catch (e) {
+      console.warn('[Auth] isAuthenticated check failed:', e.error || e.message);
+    }
+
+    if (sdkAuthenticated) {
+      Auth.isAuthenticated = true;
+      Auth.user = await _restoreUser();
+      _persistAuthUser(Auth.user);
+      await _primeSessionTokens();
+      console.log('[Auth] authenticated user restored:', Auth.user?.email || Auth.user?.sub);
+      if (isCallback) {
         window.dispatchEvent(new CustomEvent('auth:login', { detail: { user: Auth.user } }));
-      } catch (e) {
-        console.error('[Auth] handleRedirectCallback error:', e);
       }
     } else {
-      try {
-        const t = await _client.getTokenSilently(_tokenOpts());
+      const hadAuth = localStorage.getItem('f1dash_auth') === '1';
+      const cachedUser = hadAuth ? await _restoreUser() : null;
+      if (cachedUser) {
         Auth.isAuthenticated = true;
-        Auth.user = await _client.getUser();
-        localStorage.setItem('f1dash_auth', '1');
-        if (Auth.user) localStorage.setItem('f1dash_user', JSON.stringify(Auth.user));
-        if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
-      } catch {
-        // getTokenSilently() failed (refresh tokens not configured or cookies blocked).
-        // Use the SDK's cached user object, then fall back to our own localStorage copy.
-        const hadAuth = localStorage.getItem('f1dash_auth') === '1';
-        let cached = hadAuth ? (await _client.getUser().catch(() => null)) : null;
-        if (!cached && hadAuth) {
-          try { cached = JSON.parse(localStorage.getItem('f1dash_user') || 'null'); } catch {}
-        }
-        if (cached) {
-          Auth.isAuthenticated = true;
-          Auth.user = cached;
-        } else {
-          Auth.isAuthenticated = false;
-          Auth.user = null;
-          localStorage.removeItem('f1dash_auth');
-          localStorage.removeItem('f1dash_user');
-        }
+        Auth.user = cachedUser;
+        _persistAuthUser(cachedUser);
+        await _cacheIdToken().catch(() => null);
+        console.warn('[Auth] using cached user after silent auth miss:', cachedUser.email || cachedUser.sub);
+      } else {
+        Auth.isAuthenticated = false;
+        Auth.user = null;
+        _clearPersistedAuth();
       }
     }
 
@@ -125,52 +198,42 @@ const Auth = {
   },
 
   async login() {
-    // Wait up to 3s for client to initialise (it boots async on page load)
     for (let i = 0; i < 30 && !_client; i++) await new Promise(r => setTimeout(r, 100));
-    if (!_client) { console.error('[Auth] client not initialised after wait'); return; }
-    const { redirectUri, audience } = await _getConfig();
+    if (!_client) { console.error('[Auth] client not ready for login'); return; }
+    const cfg = await _getConfig();
+    console.log('[Auth] redirecting to Auth0...');
     await _client.loginWithRedirect({
-      authorizationParams: {
-        redirect_uri: redirectUri || window.location.origin,
-        ...(audience ? { audience } : {}),
-      },
+      authorizationParams: _authorizationParams(cfg),
     });
   },
 
   logout() {
-    if (!_client) return;
     Auth.isAuthenticated = false;
     Auth.user = null;
-    localStorage.removeItem('f1dash_auth');
-    localStorage.removeItem('f1dash_user');
-    localStorage.removeItem('f1dash_profile');
-    sessionStorage.removeItem('f1dash_token');
-    sessionStorage.removeItem('f1dash_token_exp');
-    _client.logout({ logoutParams: { returnTo: window.location.origin } });
+    _clearPersistedAuth({ clearProfile: true });
+    if (_client) {
+      _client.logout({ logoutParams: { returnTo: window.location.origin } });
+    }
   },
 
   async getToken() {
     if (!Auth.isAuthenticated) return null;
     if (_client) {
       try {
-        const t = await _client.getTokenSilently(_tokenOpts());
-        if (t) { sessionStorage.setItem('f1dash_token', t); sessionStorage.setItem('f1dash_token_exp', String(Date.now() + 3500000)); }
-        return t;
-      } catch {}
+        const accessToken = await _getAccessToken();
+        if (accessToken) return accessToken;
+      } catch (e) {
+        console.warn('[Auth] getTokenSilently failed:', e.error || e.message);
+      }
+      const idToken = await _cacheIdToken();
+      if (idToken) return idToken;
     }
-    // Fallback: session-cached token (valid within same browser session until expiry)
-    const cached = sessionStorage.getItem('f1dash_token');
-    const exp = parseInt(sessionStorage.getItem('f1dash_token_exp') || '0');
-    if (cached && Date.now() < exp) return cached;
-    return null;
+    return _getAnyCachedToken();
   },
 
-  getUser() {
-    return Auth.user;
-  },
+  getUser() { return Auth.user; },
 };
 
 export default Auth;
 
-// Auto-boot: deferred so all module listeners register first before auth:ready fires
 setTimeout(() => Auth.init(), 0);
