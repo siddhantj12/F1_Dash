@@ -35,7 +35,7 @@ const Auth = {
   user: null,
 
   async init() {
-    const { domain, clientId, redirectUri } = await _getConfig();
+    const { domain, clientId, redirectUri, audience } = await _getConfig();
 
     if (!domain || !clientId) {
       console.warn('[Auth] AUTH0_CONFIG not set — auth disabled');
@@ -48,6 +48,7 @@ const Auth = {
       clientId,
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
+        ...(audience ? { audience } : {}),
       },
       cacheLocation: 'localstorage',
     });
@@ -106,10 +107,11 @@ const Auth = {
 
   async login() {
     if (!_client) { console.warn('[Auth] client not initialised'); return; }
-    const { redirectUri } = await _getConfig();
+    const { redirectUri, audience } = await _getConfig();
     _client.loginWithRedirect({
       authorizationParams: {
         redirect_uri: redirectUri || window.location.origin,
+        ...(audience ? { audience } : {}),
       },
     });
   },
