@@ -58,31 +58,33 @@ const Auth = {
     if (query.includes('code=') && query.includes('state=')) {
       try {
         await _client.handleRedirectCallback();
-        // Clean the URL without reloading
         window.history.replaceState({}, document.title, window.location.pathname);
         Auth.isAuthenticated = true;
         Auth.user = await _client.getUser();
+        // Persist flag so silent-auth failures don't immediately log the user out
+        localStorage.setItem('f1dash_auth', '1');
         window.dispatchEvent(new CustomEvent('auth:login', { detail: { user: Auth.user } }));
       } catch (e) {
         console.error('[Auth] handleRedirectCallback error:', e);
       }
     } else {
       try {
-        // Silent auth — will succeed if user has an active Auth0 session
         await _client.getTokenSilently();
         Auth.isAuthenticated = true;
         Auth.user = await _client.getUser();
+        localStorage.setItem('f1dash_auth', '1');
       } catch {
-        // Token renewal failed — but the user may still be cached (e.g. refresh
-        // tokens not enabled, or third-party cookies blocked). Fall back to
-        // checking for a cached user object before declaring anonymous.
-        const cached = await _client.getUser().catch(() => null);
+        // getTokenSilently() failed (refresh tokens not configured or cookies blocked).
+        // Use the SDK's cached user object if we previously logged in successfully.
+        const hadAuth = localStorage.getItem('f1dash_auth') === '1';
+        const cached  = hadAuth ? (await _client.getUser().catch(() => null)) : null;
         if (cached) {
           Auth.isAuthenticated = true;
           Auth.user = cached;
         } else {
           Auth.isAuthenticated = false;
           Auth.user = null;
+          localStorage.removeItem('f1dash_auth');
         }
       }
     }
@@ -106,6 +108,7 @@ const Auth = {
     if (!_client) return;
     Auth.isAuthenticated = false;
     Auth.user = null;
+    localStorage.removeItem('f1dash_auth');
     _client.logout({ logoutParams: { returnTo: window.location.origin } });
   },
 

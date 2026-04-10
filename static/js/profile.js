@@ -95,23 +95,25 @@ function _saveGuestProfile(prefs) {
 
 // ─── Driver photo helpers ─────────────────────────────────────────────────────
 
-const _DRIVER_SLUG_MAP = {
-  ALB: 'alexanderalbon',   ANT: 'andreakimiantonelli',
-  VER: 'maxverstappen',    LAW: 'liamlawson',
-  LEC: 'charlesleclerc',  HAM: 'lewishamilton',
-  RUS: 'georgerussell',    NOR: 'landonorris',
-  PIA: 'oscarpiastri',     ALO: 'fernandoalonso',
-  STR: 'lancestroll',      GAS: 'pierregasly',
-  DOO: 'jackdoohan',       BEA: 'oliverbearman',
-  OCO: 'estebanocon',      SAI: 'carlossainz',
-  TSU: 'yukitsunoda',      HAD: 'isackhadjar',
-  HUL: 'nicohulkenberg',   BOR: 'gabrielbortoleto',
+const _DRIVER_PHOTO_MAP = {
+  VER: { slug:'verstappen',  year:2024 }, LAW: { slug:'lawson',      year:2024 },
+  LEC: { slug:'leclerc',     year:2024 }, HAM: { slug:'hamilton',    year:2024 },
+  RUS: { slug:'russell',     year:2024 }, ANT: { slug:'antonelli',   year:2025 },
+  NOR: { slug:'norris',      year:2024 }, PIA: { slug:'piastri',     year:2024 },
+  ALO: { slug:'alonso',      year:2024 }, STR: { slug:'stroll',      year:2024 },
+  GAS: { slug:'gasly',       year:2024 }, DOO: { slug:'doohan',      year:2025 },
+  BEA: { slug:'bearman',     year:2024 }, OCO: { slug:'ocon',        year:2024 },
+  ALB: { slug:'albon',       year:2024 }, SAI: { slug:'sainz',       year:2024 },
+  TSU: { slug:'tsunoda',     year:2024 }, HAD: { slug:'hadjar',      year:2025 },
+  HUL: { slug:'hulkenberg',  year:2024 }, BOR: { slug:'bortoleto',   year:2025 },
 };
+const _F1_CDN = 'https://media.formula1.com/image/upload/f_auto/q_auto/v1706188352/content/dam/fom-website/drivers';
 
 function _driverPhotoUrl(driverName, code) {
-  const slug = (code && _DRIVER_SLUG_MAP[code])
-    || driverName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
-  return `https://media.formula1.com/image/upload/f_auto/q_auto/v1677244953/content/dam/fom-website/drivers/2026Drivers/${slug}/${slug}01.avif`;
+  const entry = code && _DRIVER_PHOTO_MAP[code];
+  if (entry) return `${_F1_CDN}/${entry.year}Drivers/${entry.slug}.png`;
+  const slug = driverName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+  return `${_F1_CDN}/2024Drivers/${slug}.png`;
 }
 
 function _driverInitials(name) {

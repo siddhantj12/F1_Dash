@@ -124,7 +124,10 @@ function _initGlobe(containerId) {
         <div style="font-size:0.55rem;font-weight:700;color:${color};letter-spacing:0.05em;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${r.short}</div>
       `;
       wrap.title = `${r.flag} ${r.name} · ${_formatDate(r.date)}`;
-      wrap.addEventListener('click', () => _selectRace(r.round, false));
+      // Stop globe's drag handler from swallowing the click
+      wrap.addEventListener('mousedown', e => e.stopPropagation());
+      wrap.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+      wrap.addEventListener('click', e => { e.stopPropagation(); _selectRace(r.round, false); });
       return wrap;
     });
 

@@ -1993,42 +1993,42 @@ select, input { font-family: var(--font-body); }
 #cal2-track-panel {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: rgba(8,8,12,0.95);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(8,8,12,0.97);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255,255,255,0.1);
   transform: translateY(100%);
   transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
   pointer-events: all;
-  z-index: 10;
+  z-index: 100; /* above globe.gl HTML elements */
 }
 #cal2-track-panel.ctp-visible { transform: translateY(0); }
-.ctp-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.25rem 0.85rem; user-select: none; }
+.ctp-header { display: flex; align-items: center; gap: 0.9rem; padding: 1rem 1.4rem; user-select: none; }
 .ctp-header:hover { background: rgba(255,255,255,0.02); }
-.ctp-flag { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+.ctp-flag { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
 .ctp-title-wrap { flex: 1; min-width: 0; }
-.ctp-name { font-size: 0.92rem; font-weight: 700; color: #F0F0F5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ctp-circuit { font-size: 0.7rem; color: #9090A8; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ctp-status { font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; border: 1px solid; letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
-.ctp-toggle-btn { background: none; border: none; color: #9090A8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: color 0.2s; }
-.ctp-toggle-btn:hover { color: #F0F0F5; }
-.ctp-chevron { width: 16px; height: 16px; transition: transform 0.3s ease; }
+.ctp-name { font-size: 1.05rem; font-weight: 700; color: #F0F0F5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctp-circuit { font-size: 0.78rem; color: #9090A8; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctp-status { font-size: 0.72rem; font-weight: 700; padding: 4px 11px; border-radius: 20px; border: 1px solid; letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+.ctp-toggle-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9090A8; cursor: pointer; padding: 6px 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.ctp-toggle-btn:hover { background: rgba(255,255,255,0.12); color: #F0F0F5; }
+.ctp-chevron { width: 18px; height: 18px; transition: transform 0.3s ease; }
 #cal2-track-panel.ctp-collapsed .ctp-chevron { transform: rotate(180deg); }
 
 /* Collapsible body */
-.ctp-body { overflow: hidden; max-height: 260px; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
+.ctp-body { overflow: hidden; max-height: 360px; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
 #cal2-track-panel.ctp-collapsed .ctp-body { max-height: 0; }
-.ctp-inner { display: flex; gap: 1rem; padding: 0 1.25rem 1rem; }
+.ctp-inner { display: flex; gap: 1.25rem; padding: 0 1.4rem 1.25rem; }
 
 /* Track SVG area */
-.ctp-track-wrap { flex-shrink: 0; width: 180px; height: 120px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.ctp-track-wrap { flex-shrink: 0; width: 240px; height: 170px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .ctp-track-svg { width: 100%; height: 100%; }
-.ctp-track-loading { font-size: 0.68rem; color: #555568; }
+.ctp-track-loading { font-size: 0.72rem; color: #555568; }
 
-.ctp-stats { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; align-content: start; }
-.ctp-stat { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.45rem 0.6rem; text-align: center; }
+.ctp-stats { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; align-content: start; }
+.ctp-stat { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.65rem 0.8rem; text-align: center; }
 .ctp-stat--record { grid-column: span 3; text-align: left; }
-.ctp-stat-val { font-size: 0.82rem; font-weight: 700; color: #F0F0F5; }
-.ctp-stat-label { font-size: 0.6rem; color: #9090A8; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+.ctp-stat-val { font-size: 1rem; font-weight: 700; color: #F0F0F5; }
+.ctp-stat-label { font-size: 0.67rem; color: #9090A8; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .cal2-globe-hint {
   position: absolute;
