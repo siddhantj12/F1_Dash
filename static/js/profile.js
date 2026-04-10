@@ -384,6 +384,10 @@ const Profile = {
   },
 
   openOnboarding() {
+    if (!Auth.isAuthenticated) {
+      Auth.login();
+      return;
+    }
     return _showOnboardingModal();
   },
 };
@@ -625,9 +629,8 @@ export function openProfileDrawer() {
       ${!profile ? `
         <div class="pd-anon">
           <div class="pd-anon-icon"><i class="fa-solid fa-user-circle"></i></div>
-          <p>Sign in to save your picks, or continue as a guest.</p>
-          <button class="ob-btn-next pd-full-btn" id="pd-signin-btn"><i class="fa-brands fa-google"></i> Sign In</button>
-          <button class="ob-btn-skip pd-full-btn" id="pd-guest-btn">Pick a Driver as Guest</button>
+          <p>Sign in to pick your favourite driver and personalise your experience.</p>
+          <button class="ob-btn-next pd-full-btn" id="pd-signin-btn"><i class="fa-solid fa-right-to-bracket"></i> Sign In</button>
         </div>
       ` : `
         <div class="pd-identity" style="--team-color:${teamColor}">
@@ -689,7 +692,6 @@ export function openProfileDrawer() {
   drawer.querySelector('.pd-backdrop').onclick = close;
   drawer.querySelector('.pd-close').onclick = close;
   document.getElementById('pd-signin-btn')?.addEventListener('click', () => { close(); Auth.login(); });
-  document.getElementById('pd-guest-btn')?.addEventListener('click', () => { close(); Profile.openOnboarding(); });
   document.getElementById('pd-change-btn')?.addEventListener('click', () => { close(); Profile.openOnboarding(); });
   document.getElementById('pd-signout-btn')?.addEventListener('click', () => {
     close();
@@ -728,11 +730,10 @@ window.addEventListener('auth:ready', ({ detail }) => {
   if (detail.isAuthenticated) {
     Profile.load();
   } else {
-    // Load guest prefs from localStorage if available
-    const guest = _loadGuestProfile();
-    _profile = guest || null;
-    window.userProfile = _profile;
-    _updateSidebarFooter(_profile);
+    // Guest — no onboarding, just load cached prefs
+    _profile = null;
+    window.userProfile = null;
+    _updateSidebarFooter(null);
   }
 });
 
@@ -746,19 +747,7 @@ window.addEventListener('profile:updated', () => {
   }
 });
 
-// Hydrate guest prefs immediately so Garage / Profile don't see a null profile before auth:ready fires.
-(function _bootstrapGuestProfile() {
-  const guest = _loadGuestProfile();
-  if (!guest) return;
-  _profile = guest;
-  window.userProfile = guest;
-  const apply = () => _updateSidebarFooter(guest);
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', apply, { once: true });
-  } else {
-    queueMicrotask(apply);
-  }
-})();
+// No guest bootstrap — guests see the default "Sign in" state
 
 export default Profile;
 export { TEAM_COLORS, FALLBACK_DRIVERS, FALLBACK_TEAMS };

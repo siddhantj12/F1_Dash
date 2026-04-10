@@ -11,6 +11,7 @@
  * Anonymous / no-favorite state: CTA to sign in or pick a driver.
  */
 
+import Auth from '/static/js/auth.js';
 import Profile, { TEAM_COLORS, FALLBACK_DRIVERS } from '/static/js/profile.js';
 import { RACES_2026 } from '/static/js/calendar.js';
 
@@ -26,16 +27,16 @@ function _renderAnonymous() {
   if (!el) return;
   el.innerHTML = `
     <div class="garage-anon">
-      <div class="garage-anon-icon"><i class="fa-solid fa-flag-checkered"></i></div>
-      <h2>Pick Your Driver</h2>
-      <p>Choose your favourite driver to track their 2026 season — no account needed.</p>
-      <button class="garage-anon-btn" id="garage-pick-driver-btn">
-        <i class="fa-solid fa-user-plus"></i> Pick a Driver
+      <div class="garage-anon-icon"><i class="fa-solid fa-lock"></i></div>
+      <h2>Sign In to Get Started</h2>
+      <p>Create an account to pick your favourite driver and track their 2026 season.</p>
+      <button class="garage-anon-btn" id="garage-signin-btn">
+        <i class="fa-solid fa-right-to-bracket"></i> Sign In
       </button>
     </div>
   `;
-  document.getElementById('garage-pick-driver-btn')?.addEventListener('click', () => {
-    Profile.openOnboarding();
+  document.getElementById('garage-signin-btn')?.addEventListener('click', () => {
+    Auth.login();
   });
 }
 
