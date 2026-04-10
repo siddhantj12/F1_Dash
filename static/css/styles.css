@@ -2247,6 +2247,12 @@ select, input { font-family: var(--font-body); }
 .pp-auth-badge { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: 20px; background: rgba(0,200,100,0.12); color: #00C864; font-size: 0.75rem; font-weight: 600; }
 .pp-section { margin-bottom: 1.25rem; }
 .pp-section-title { font-size: 0.72rem; font-weight: 600; color: #9090A8; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.6rem; }
+.pd-name-edit { display: flex; gap: 0.5rem; }
+.pd-name-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0.5rem 0.75rem; color: #F0F0F5; font-size: 0.9rem; outline: none; }
+.pd-name-input:focus { border-color: rgba(255,255,255,0.3); }
+.pd-name-save { background: #E10600; border: none; border-radius: 8px; color: #fff; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.2s; }
+.pd-name-save:hover { opacity: 0.85; }
+.pd-name-save:disabled { opacity: 0.5; cursor: default; }
 .pp-fav-card { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: rgba(255,255,255,0.03); border: 1px solid color-mix(in srgb, var(--team-color, #E10600) 20%, transparent); border-radius: 12px; }
 .pp-fav-num { font-size: 2rem; font-weight: 800; line-height: 1; min-width: 2.5rem; }
 .pp-fav-name { font-size: 1rem; font-weight: 600; color: #F0F0F5; }

@@ -28,6 +28,7 @@ class PreferencesUpdate(BaseModel):
     favorite_driver_code: Optional[str] = None
     favorite_team_id: Optional[str] = None
     onboarding_complete: bool = True
+    display_name: Optional[str] = None
 
 
 def _get_supabase():
@@ -78,6 +79,8 @@ async def update_preferences(
         update_data["favorite_driver_code"] = prefs.favorite_driver_code
     if prefs.favorite_team_id is not None:
         update_data["favorite_team_id"] = prefs.favorite_team_id
+    if prefs.display_name is not None:
+        update_data["display_name"] = prefs.display_name
 
     result = (
         sb.table("user_profiles")

@@ -102,41 +102,31 @@ function _initGlobe(containerId) {
   // waitForGlobeReady:false — don't wait for textures; start loop right away
   const globe = Globe({ animateIn: false, waitForGlobeReady: false })(el)
     .width(w).height(h)
-    .globeImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/earth-blue-marble.jpg')
+    .globeImageUrl('/static/img/earth-blue-marble.jpg')
     .backgroundImageUrl('https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/example/img/night-sky.png')
     .showAtmosphere(true)
     .atmosphereColor('#4488ff')
     .atmosphereAltitude(0.25)
-    .pointsData(RACES_2026)
-    .pointLat('lat')
-    .pointLng('lng')
-    .pointAltitude(0.01)
-    .pointRadius(pinSize)
-    .pointColor(pinColor)
-    .pointResolution(12)
-    .pointsMerge(false)
-    .labelsData(RACES_2026.filter(r => {
-      if (nextRace && r.round === nextRace.round) return true;
-      const s = _raceStatus(r);
-      return s !== 'completed' && s !== 'suspended';
-    }))
-    .labelLat('lat')
-    .labelLng('lng')
-    .labelText('short')
-    .labelSize(1.4)
-    .labelDotRadius(0)
-    .labelColor(r => nextRace && r.round === nextRace.round ? '#E10600' : 'rgba(200,200,220,0.75)')
-    .labelAltitude(0.02)
-    .labelResolution(2)
-    .pointLabel(r => `
-      <div style="background:rgba(10,10,13,0.92);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 14px;font-family:'Inter',sans-serif;pointer-events:none;">
-        <div style="font-size:1rem;margin-bottom:2px;">${r.flag}</div>
-        <div style="font-weight:700;color:#F0F0F5;font-size:0.85rem;">${r.name}</div>
-        <div style="color:#9090A8;font-size:0.72rem;margin-top:3px;">${r.circuit}</div>
-        <div style="color:#9090A8;font-size:0.72rem;">${_formatDate(r.date)}</div>
-      </div>
-    `)
-    .onPointClick(r => _selectRace(r.round, false));
+    .htmlElementsData(RACES_2026)
+    .htmlLat('lat')
+    .htmlLng('lng')
+    .htmlAltitude(0.02)
+    .htmlElement(r => {
+      const color = pinColor(r);
+      const isNext = nextRace && r.round === nextRace.round;
+      const isSelected = r.round === _selectedRound;
+      const size = isSelected || isNext ? '1.5rem' : (_raceStatus(r) === 'completed' ? '0.9rem' : '1.1rem');
+      const glow = isNext ? `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 3px ${color})` : `drop-shadow(0 0 3px ${color})`;
+      const wrap = document.createElement('div');
+      wrap.style.cssText = `cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;user-select:none;`;
+      wrap.innerHTML = `
+        <div style="font-size:${size};filter:${glow};opacity:${_raceStatus(r) === 'completed' ? 0.45 : 1};line-height:1;">🏎️</div>
+        <div style="font-size:0.55rem;font-weight:700;color:${color};letter-spacing:0.05em;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${r.short}</div>
+      `;
+      wrap.title = `${r.flag} ${r.name} · ${_formatDate(r.date)}`;
+      wrap.addEventListener('click', () => _selectRace(r.round, false));
+      return wrap;
+    });
 
   // Patch pauseAnimation IMMEDIATELY — before IntersectionObserver can fire
   globe.pauseAnimation = () => {};
@@ -244,25 +234,9 @@ function _selectRace(round, flyGlobe = true) {
     _globe.pointOfView({ lat: race.lat, lng: race.lng, altitude: 1.6 }, 900);
   }
 
-  // Refresh pin colours
+  // Refresh HTML car pins
   if (_globe) {
-    const nextRace = _findNextRound();
-    _globe
-      .pointColor(r => {
-        if (r.round === _selectedRound) return '#FFFFFF';
-        const s = _raceStatus(r);
-        if (nextRace && r.round === nextRace.round) return '#E10600';
-        if (s === 'suspended') return '#FF6B00';
-        if (s === 'completed') return '#444455';
-        if (s === 'live')      return '#00E676';
-        return '#9090A8';
-      })
-      .pointRadius(r => {
-        if (r.round === _selectedRound) return 0.7;
-        if (nextRace && r.round === nextRace.round) return 0.65;
-        const s = _raceStatus(r);
-        return s === 'completed' ? 0.28 : 0.42;
-      });
+    _globe.htmlElementsData([...RACES_2026]);
   }
 }
 

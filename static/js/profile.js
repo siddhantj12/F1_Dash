@@ -212,7 +212,7 @@ const Profile = {
     }
   },
 
-  async savePreferences({ driverCode, teamId, complete = true }) {
+  async savePreferences({ driverCode, teamId, complete = true, displayName } = {}) {
     const token = await Auth.getToken();
 
     // Guest mode: no auth token → save to localStorage
@@ -221,6 +221,7 @@ const Profile = {
         favorite_driver_code: driverCode || null,
         favorite_team_id: teamId || null,
         onboarding_complete: complete,
+        ...(displayName ? { display_name: displayName } : {}),
       });
       _profile = guest;
       window.userProfile = _profile;
@@ -232,6 +233,7 @@ const Profile = {
       favorite_driver_code: driverCode || null,
       favorite_team_id: teamId || null,
       onboarding_complete: complete,
+      ...(displayName ? { display_name: displayName } : {}),
     };
 
     const resp = await fetch('/api/me/preferences', {
@@ -509,6 +511,13 @@ export function openProfileDrawer() {
           </div>
         </div>
         <div class="pd-section">
+          <div class="pp-section-title">Display Name</div>
+          <div class="pd-name-edit">
+            <input id="pd-name-input" type="text" class="pd-name-input" value="${profile.display_name || ''}" placeholder="Your name" maxlength="40">
+            <button class="pd-name-save" id="pd-name-save-btn">Save</button>
+          </div>
+        </div>
+        <div class="pd-section">
           <div class="pp-section-title">Favourite Driver</div>
           ${driver ? `
             <div class="pp-fav-card" style="--team-color:${teamColor}">
@@ -553,6 +562,28 @@ export function openProfileDrawer() {
   document.getElementById('pd-signout-btn')?.addEventListener('click', () => {
     close();
     setTimeout(() => { if (confirm('Sign out?')) Auth.logout(); }, 200);
+  });
+  document.getElementById('pd-name-save-btn')?.addEventListener('click', async () => {
+    const input = document.getElementById('pd-name-input');
+    const name = input?.value?.trim();
+    if (!name) return;
+    const btn = document.getElementById('pd-name-save-btn');
+    btn.textContent = '…';
+    btn.disabled = true;
+    try {
+      const p = window.userProfile || _profile;
+      await Profile.savePreferences({
+        driverCode: p?.favorite_driver_code,
+        teamId: p?.favorite_team_id,
+        complete: p?.onboarding_complete ?? true,
+        displayName: name,
+      });
+      btn.textContent = '✓';
+      window.dispatchEvent(new CustomEvent('profile:updated', { detail: { profile: _profile } }));
+    } catch {
+      btn.textContent = 'Error';
+      btn.disabled = false;
+    }
   });
 }
 

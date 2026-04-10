@@ -173,6 +173,32 @@ function setStatus(message, isLoading = false) {
     }
 }
 
+function _driverPhotoUrl(name) {
+    const slug = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+    return `https://media.formula1.com/image/upload/f_auto/q_auto/v1677244953/content/dam/fom-website/drivers/2026Drivers/${slug}/${slug}01.avif`;
+}
+
+function _setAvatarPhoto(el, driver, color) {
+    const code = driver.code || (driver.name ? driver.name.slice(0, 2).toUpperCase() : 'F1');
+    const bg = color ? `${color}22` : 'rgba(225,6,0,0.15)';
+    const border = color ? `${color}66` : 'rgba(225,6,0,0.3)';
+    el.style.background = bg;
+    el.style.borderColor = border;
+    el.style.padding = '0';
+    el.style.overflow = 'hidden';
+
+    if (driver.name) {
+        el.innerHTML = `
+            <img src="${_driverPhotoUrl(driver.name)}" alt="${driver.name}"
+                 style="width:100%;height:100%;object-fit:cover;object-position:top center;"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:0.75em;font-weight:700;letter-spacing:0.05em">${code}</span>
+        `;
+    } else {
+        el.innerHTML = `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:0.75em;font-weight:700;">${code}</span>`;
+    }
+}
+
 function updateDriverCard(type, driver) {
     const isPrimary = type === 'primary';
     const nameEl = isPrimary ? primaryDriverName : compareDriverName;
@@ -185,7 +211,7 @@ function updateDriverCard(type, driver) {
     if (!driver) {
         nameEl.textContent = isPrimary ? 'Select a driver' : 'Optional';
         teamEl.textContent = '—';
-        avatarEl.textContent = isPrimary ? 'P1' : 'C2';
+        avatarEl.innerHTML = `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:0.75em;font-weight:700;">${isPrimary ? 'P1' : 'C2'}</span>`;
         avatarEl.style.background = 'rgba(225, 6, 0, 0.15)';
         avatarEl.style.borderColor = 'rgba(225, 6, 0, 0.3)';
         if (numEl) numEl.textContent = '—';
@@ -194,9 +220,8 @@ function updateDriverCard(type, driver) {
 
     nameEl.textContent = driver.name || driver.code || 'Unknown';
     teamEl.textContent = driver.team || '—';
-    avatarEl.textContent = driver.code || (driver.name ? driver.name.slice(0, 2).toUpperCase() : 'F1');
+    _setAvatarPhoto(avatarEl, driver, driver.color);
 
-    // Update driver number dynamically
     if (numEl && driver.code) {
         const num = DRIVER_NUMBERS[driver.code];
         numEl.textContent = num !== undefined ? num : '—';
@@ -204,11 +229,6 @@ function updateDriverCard(type, driver) {
             numEl.style.color = driver.color;
             numEl.style.textShadow = `0 0 20px ${driver.color}66`;
         }
-    }
-
-    if (driver.color) {
-        avatarEl.style.background = `${driver.color}22`;
-        avatarEl.style.borderColor = `${driver.color}66`;
     }
 }
 
@@ -245,14 +265,12 @@ function updateComparisonMeta(cmp) {
     n1.textContent = `${d1.code} — Lap ${d1.lap}`;
     const lt1 = d1.lapTime && d1.lapTime !== 'N/A' ? d1.lapTime : '';
     t1.textContent = [pos1, lt1, d1.team].filter(Boolean).join(' · ');
-    a1.textContent = d1.code;
-    if (d1.color) { a1.style.background = `${d1.color}22`; a1.style.borderColor = `${d1.color}66`; }
+    _setAvatarPhoto(a1, d1, d1.color);
 
     n2.textContent = `${d2.code} — Lap ${d2.lap}`;
     const lt2 = d2.lapTime && d2.lapTime !== 'N/A' ? d2.lapTime : '';
     t2.textContent = [pos2, lt2, d2.team].filter(Boolean).join(' · ');
-    a2.textContent = d2.code;
-    if (d2.color) { a2.style.background = `${d2.color}22`; a2.style.borderColor = `${d2.color}66`; }
+    _setAvatarPhoto(a2, d2, d2.color);
 
     const vsEl = document.querySelector('.vs-divider');
     if (vsEl && delta && delta.time != null) {
