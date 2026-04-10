@@ -248,7 +248,6 @@ function _renderTrackPanel(race) {
           <div class="ctp-stat"><div class="ctp-stat-val">${race.laps}</div><div class="ctp-stat-label">Laps</div></div>
           <div class="ctp-stat"><div class="ctp-stat-val">${(race.km * race.laps).toFixed(1)}</div><div class="ctp-stat-label">Race km</div></div>
           <div class="ctp-stat"><div class="ctp-stat-val">${race.turns}</div><div class="ctp-stat-label">Corners</div></div>
-          <div class="ctp-stat"><div class="ctp-stat-val">${race.drs}</div><div class="ctp-stat-label">DRS</div></div>
           <div class="ctp-stat ctp-stat--record">
             <div class="ctp-stat-val">${race.record}</div>
             <div class="ctp-stat-label">Record · ${race.recordBy.split(' ').pop()} ${race.recordYear}</div>

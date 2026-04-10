@@ -2024,9 +2024,9 @@ select, input { font-family: var(--font-body); }
 .ctp-track-svg { width: 100%; height: 100%; }
 .ctp-track-loading { font-size: 0.72rem; color: #555568; }
 
-.ctp-stats { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; align-content: start; }
+.ctp-stats { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem; align-content: start; }
 .ctp-stat { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.65rem 0.8rem; text-align: center; }
-.ctp-stat--record { grid-column: span 3; text-align: left; }
+.ctp-stat--record { grid-column: span 2; text-align: left; }
 .ctp-stat-val { font-size: 1rem; font-weight: 700; color: #F0F0F5; }
 .ctp-stat-label { font-size: 0.67rem; color: #9090A8; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 
