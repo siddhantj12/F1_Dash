@@ -22,9 +22,11 @@ async function _getConfig() {
 }
 
 function _authorizationParams(cfg) {
+  // NOTE: audience is intentionally omitted — the Auth0 tenant does not have
+  // https://f1dashboard.api registered as an API.  Without it Auth0 returns
+  // an ID token (aud = clientId) which the backend accepts.
   return {
     redirect_uri: cfg.redirectUri || window.location.origin,
-    ...(cfg.audience ? { audience: cfg.audience } : {}),
     scope: 'openid profile email',
   };
 }
