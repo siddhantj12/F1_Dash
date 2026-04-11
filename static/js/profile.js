@@ -572,22 +572,15 @@ async function _showOnboardingModal() {
     const btn = document.getElementById('ob-next');
     btn.disabled = true;
     btn.textContent = 'Saving…';
-    try {
-      await Profile.savePreferences({
-        driverCode: selectedDriver?.code || null,
-        teamId: selectedTeam?.id || null,
-        complete: true,
-      });
-      _closeModal();
-      window.dispatchEvent(new CustomEvent('profile:updated', { detail: { profile: _profile } }));
-      // Navigate to My Garage
-      const garageNav = document.querySelector('[data-target="garage-view"]');
-      garageNav?.click();
-    } catch (e) {
-      console.error('[Onboarding] save error:', e);
-      btn.disabled = false;
-      btn.textContent = 'Try again';
-    }
+    // Fire-and-forget — never block the user on a save error
+    Profile.savePreferences({
+      driverCode: selectedDriver?.code || null,
+      teamId: selectedTeam?.id || null,
+      complete: true,
+    }).catch(e => console.warn('[Onboarding] save error (non-blocking):', e));
+    _closeModal();
+    window.dispatchEvent(new CustomEvent('profile:updated', { detail: { profile: _profile } }));
+    document.querySelector('[data-target="garage-view"]')?.click();
   }
 
   function _closeModal() {
@@ -597,8 +590,9 @@ async function _showOnboardingModal() {
   // Event listeners
   document.getElementById('ob-next').addEventListener('click', _advanceStep);
   document.getElementById('ob-back').addEventListener('click', () => goToStep(1));
-  document.getElementById('ob-skip').addEventListener('click', async () => {
-    await Profile.savePreferences({ driverCode: null, teamId: null, complete: true });
+  document.getElementById('ob-skip').addEventListener('click', () => {
+    Profile.savePreferences({ driverCode: null, teamId: null, complete: true })
+      .catch(e => console.warn('[Onboarding] skip save error:', e));
     _closeModal();
   });
   document.getElementById('ob-driver-search').addEventListener('input', e => {
