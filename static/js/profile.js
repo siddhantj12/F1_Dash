@@ -572,12 +572,24 @@ async function _showOnboardingModal() {
     const btn = document.getElementById('ob-next');
     btn.disabled = true;
     btn.textContent = 'Saving…';
-    // Fire-and-forget — never block the user on a save error
+
+    // Optimistically update _profile NOW so garage renders correctly immediately
+    const optimistic = {
+      ...(_profile || {}),
+      favorite_driver_code: selectedDriver?.code || null,
+      favorite_team_id: selectedTeam?.id || null,
+      onboarding_complete: true,
+    };
+    _profile = optimistic;
+    window.userProfile = optimistic;
+
+    // Fire-and-forget — persist in background, never block the user
     Profile.savePreferences({
       driverCode: selectedDriver?.code || null,
       teamId: selectedTeam?.id || null,
       complete: true,
     }).catch(e => console.warn('[Onboarding] save error (non-blocking):', e));
+
     _closeModal();
     window.dispatchEvent(new CustomEvent('profile:updated', { detail: { profile: _profile } }));
     document.querySelector('[data-target="garage-view"]')?.click();
