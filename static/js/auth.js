@@ -98,9 +98,17 @@ async function _cacheIdToken() {
   return _cacheToken(ID_TOKEN_KEY, ID_TOKEN_EXP_KEY, raw, expiresAtMs);
 }
 
+function _isJwt(token) {
+  // Opaque tokens have no dots; JWTs are header.payload.signature
+  return typeof token === 'string' && token.split('.').length === 3;
+}
+
 async function _getAccessToken() {
   if (!_client) return null;
   const token = await _client.getTokenSilently();
+  // Without a registered API audience Auth0 returns an opaque (non-JWT) token
+  // which the backend cannot validate. Discard it and fall through to the ID token.
+  if (!_isJwt(token)) return null;
   return _cacheToken(ACCESS_TOKEN_KEY, ACCESS_TOKEN_EXP_KEY, token);
 }
 
