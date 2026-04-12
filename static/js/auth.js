@@ -71,7 +71,8 @@ function _clearPersistedAuth({ clearProfile = false } = {}) {
   localStorage.removeItem('f1dash_user');
   if (clearProfile) {
     localStorage.removeItem('f1dash_profile');
-    localStorage.removeItem('f1dash_profile_pending_sync');
+    // Deliberately keep f1dash_profile_pending_sync — if a save was in-flight
+    // or failed before logout, it will be flushed on the next login.
   }
   _clearSessionTokens();
 }

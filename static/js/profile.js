@@ -366,6 +366,10 @@ const Profile = {
       return _profile;
     }
 
+    // Always persist locally first — if the API call fails for any reason,
+    // the pending sync will be flushed on the next successful login.
+    _savePendingProfileSync(body);
+
     const resp = await fetch('/api/me/preferences', {
       method: 'PUT',
       headers: {
@@ -377,7 +381,7 @@ const Profile = {
     if (!resp.ok) throw new Error(`/api/me/preferences returned ${resp.status}`);
     _profile = await resp.json();
     window.userProfile = _profile;
-    _clearPendingProfileSync();
+    _clearPendingProfileSync();   // API succeeded — no need to re-flush
     _saveCachedAuthProfile(_profile);
     _updateSidebarFooter(_profile);
     return _profile;
