@@ -1,0 +1,11 @@
+.env
+.env.*
+.venv
+.venv312
+gitingest-env
+fastf1_cache
+__pycache__
+**/__pycache__
+*.pyc
+.git
+.claude
