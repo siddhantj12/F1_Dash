@@ -67,10 +67,6 @@
           <i class="fa-regular fa-newspaper"></i>
           <span>News & Insights</span>
         </li>
-        <li id="nav-live">
-          <i class="fa-solid fa-tower-broadcast"></i>
-          <span>Live Hub</span>
-        </li>
       </ul>
 
       <div class="nav-section-label" style="margin-top:16px;">More</div>
@@ -78,10 +74,6 @@
         <li data-target="calendar-view" id="nav-calendar">
           <i class="fa-regular fa-calendar-days"></i>
           <span>Calendar</span>
-        </li>
-        <li>
-          <i class="fa-solid fa-sliders"></i>
-          <span>Settings</span>
         </li>
       </ul>
 
@@ -545,13 +537,28 @@
       renderNewsGrid(filtered);
     });
 
-    // Load news when the News tab is shown
+    // ── News auto-refresh ───────────────────────────────────────────
+    // Load on first visit; then silently re-fetch every 30 minutes.
+    // If the news tab is not currently active during a scheduled refresh,
+    // the data is still updated in memory so it's fresh when the user returns.
+    const NEWS_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
     let _newsLoaded = false;
+    let _newsRefreshTimer = null;
+
+    function _scheduleNewsRefresh() {
+      clearTimeout(_newsRefreshTimer);
+      _newsRefreshTimer = setTimeout(async () => {
+        await loadNews();
+        _scheduleNewsRefresh(); // reschedule after each fetch completes
+      }, NEWS_REFRESH_MS);
+    }
+
     document.querySelectorAll('[data-target]').forEach(el => {
       el.addEventListener('click', () => {
         if (el.dataset.target === 'news-view' && !_newsLoaded) {
           _newsLoaded = true;
           loadNews();
+          _scheduleNewsRefresh();
         }
       });
     });

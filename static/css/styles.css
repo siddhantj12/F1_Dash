@@ -1361,7 +1361,7 @@ select, input { font-family: var(--font-body); }
     0 16px 56px rgba(0,0,0,0.8),
     0 0 1px rgba(225,6,0,0.3),
     0 0 40px rgba(225,6,0,0.06);
-  transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.16s ease, transform 0.16s ease, top 0.45s cubic-bezier(0.4, 0, 0.2, 1), left 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: auto;
   animation: card-enter 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
@@ -1600,6 +1600,56 @@ select, input { font-family: var(--font-body); }
 .tutorial-feature-item:nth-child(2) i { background: rgba(54,113,198,0.12); color: var(--redbull); }
 .tutorial-feature-item:nth-child(3) i { background: rgba(0,230,118,0.1); color: var(--green); }
 .tutorial-feature-item:nth-child(4) i { background: rgba(255,128,0,0.1); color: var(--mclaren); }
+
+/* Tutorial driver picker grid */
+.tut-driver-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0 18px;
+  text-align: left;
+}
+.tut-driver-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: var(--r-md);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.tut-driver-chip:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+.tut-driver-chip.selected {
+  border-color: var(--chip-color, #E10600);
+  background: color-mix(in srgb, var(--chip-color, #E10600) 12%, transparent);
+  color: var(--text-primary);
+}
+.tut-driver-chip .tdc-code {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  color: var(--chip-color, inherit);
+}
+.tut-driver-chip .tdc-name {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 
 /* =========================================
    RESPONSIVE

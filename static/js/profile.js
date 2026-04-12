@@ -32,7 +32,7 @@ const TEAM_COLORS = {
 // Fallback 2026 driver roster (used if /api/drivers/2026/R fails to load)
 const FALLBACK_DRIVERS = [
   { code: 'VER', name: 'Max Verstappen',      number: 1,  team: 'red_bull',     teamName: 'Red Bull Racing' },
-  { code: 'LAW', name: 'Liam Lawson',         number: 30, team: 'red_bull',     teamName: 'Red Bull Racing' },
+  { code: 'HAD', name: 'Isack Hadjar',        number: 22, team: 'red_bull',     teamName: 'Red Bull Racing' },
   { code: 'LEC', name: 'Charles Leclerc',     number: 16, team: 'ferrari',      teamName: 'Ferrari' },
   { code: 'HAM', name: 'Lewis Hamilton',      number: 44, team: 'ferrari',      teamName: 'Ferrari' },
   { code: 'RUS', name: 'George Russell',      number: 63, team: 'mercedes',     teamName: 'Mercedes' },
@@ -48,7 +48,7 @@ const FALLBACK_DRIVERS = [
   { code: 'ALB', name: 'Alex Albon',          number: 23, team: 'williams',     teamName: 'Williams' },
   { code: 'SAI', name: 'Carlos Sainz',        number: 55, team: 'williams',     teamName: 'Williams' },
   { code: 'LIN', name: 'Arvid Lindblad',      number: 6,  team: 'rb',           teamName: 'RB' },
-  { code: 'HAD', name: 'Isack Hadjar',        number: 22, team: 'rb',           teamName: 'RB' },
+  { code: 'LAW', name: 'Liam Lawson',         number: 30, team: 'rb',           teamName: 'RB' },
   { code: 'HUL', name: 'Nico Hulkenberg',     number: 27, team: 'audi',         teamName: 'Audi' },
   { code: 'BOR', name: 'Gabriel Bortoleto',   number: 5,  team: 'audi',         teamName: 'Audi' },
 ];

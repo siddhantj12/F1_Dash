@@ -1,6 +1,8 @@
 import F1DashAPI from './api.js';
 import TrackVisualizer from './track.js';
 import { TEAM_COLORS } from './api.js';
+import Auth from './auth.js';
+import Profile, { FALLBACK_DRIVERS, FALLBACK_TEAMS } from './profile.js';
 
 // Expose globally so legacy code/templates can resolve colors
 window.getDriverColor = (driverCode, teamName) => {
@@ -1347,9 +1349,9 @@ const TUTORIAL_STEPS = [
         position: 'left',
     },
     {
-        type: 'finish',
-        title: 'You\'re All Set!',
-        body: 'That\'s everything you need to dive into the data. Start by picking a season and race on the left panel — the rest will flow naturally.',
+        type: 'setup',
+        title: 'Personalise Your Experience',
+        body: 'Sign in to pick your favourite driver and track their season in My Garage.',
     },
 ];
 
@@ -1401,21 +1403,31 @@ class Tutorial {
     }
 
     _show(idx) {
+        // Fade card out, update, fade back in — prevents glitch from animation reset
+        // Don't shift transform on welcome/setup cards (they use translate(-50%,-50%) !important)
+        const step = TUTORIAL_STEPS[idx];
+        const isCentered = step?.type === 'welcome' || step?.type === 'setup';
+        this._card.style.opacity = '0';
+        if (!isCentered) this._card.style.transform = 'translateY(6px)';
+        clearTimeout(this._fadeTimer);
+        this._fadeTimer = setTimeout(() => {
+            this._showContent(idx);
+            this._card.style.opacity = '1';
+            this._card.style.transform = '';
+        }, 160);
+    }
+
+    _showContent(idx) {
         this._clearHighlight();
         this._step = idx;
         const step = TUTORIAL_STEPS[idx];
         const total = TUTORIAL_STEPS.length;
-        const realSteps = total - 2; // exclude welcome & finish
+        const realSteps = total - 2; // exclude welcome & setup
 
         const dots = Array.from({ length: total }, (_, i) => {
             const cls = i < idx ? 'done' : i === idx ? 'active' : '';
             return `<div class="tutorial-progress-dot ${cls}"></div>`;
         }).join('');
-
-        // Re-trigger entrance animation
-        this._card.style.animation = 'none';
-        void this._card.offsetHeight;
-        this._card.style.animation = '';
 
         if (step.type === 'welcome') {
             this._spotlight.style.display = 'none';
@@ -1438,20 +1450,94 @@ class Tutorial {
                 </div>
                 <div class="tutorial-key-hint">Navigate: <kbd>&larr;</kbd> <kbd>&rarr;</kbd> arrow keys &middot; <kbd>Esc</kbd> to skip</div>
             `;
-        } else if (step.type === 'finish') {
+        } else if (step.type === 'setup') {
             this._spotlight.style.display = 'none';
             this._arrow.style.display = 'none';
             this._card.className = 'tutorial-card welcome';
-            this._card.innerHTML = `
-                <div class="tutorial-welcome-icon" style="background:var(--green);box-shadow:0 0 40px var(--green-glow),0 0 80px rgba(0,230,118,0.2);"><i class="fa-solid fa-check"></i></div>
-                <h3>${step.title}</h3>
-                <p class="tutorial-welcome-sub">${step.body}</p>
-                <div class="tutorial-progress">${dots}</div>
-                <div class="tutorial-actions">
-                    <button class="tutorial-btn tutorial-btn-back" data-action="back" style="margin-right:8px;"><i class="fa-solid fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>Back</button>
-                    <button class="tutorial-btn tutorial-btn-next" data-action="next" style="background:var(--green);box-shadow:0 0 20px var(--green-glow);">Get Started <i class="fa-solid fa-rocket" style="margin-left:6px;font-size:11px;"></i></button>
-                </div>
-            `;
+
+            const profile = window.userProfile;
+            const isAuth = Auth.isAuthenticated;
+            const hasDriver = profile && !profile.is_guest && profile.favorite_driver_code;
+            const favDriver = hasDriver ? FALLBACK_DRIVERS.find(d => d.code === profile.favorite_driver_code) : null;
+
+            let innerHTML = '';
+            if (!isAuth) {
+                // Not signed in
+                innerHTML = `
+                    <div class="tutorial-welcome-icon"><i class="fa-solid fa-user-circle"></i></div>
+                    <h3>${step.title}</h3>
+                    <p class="tutorial-welcome-sub">${step.body}</p>
+                    <div class="tutorial-progress">${dots}</div>
+                    <div class="tutorial-actions" style="flex-direction:column;gap:10px;align-items:stretch;">
+                        <button class="tutorial-btn tutorial-btn-next" data-action="signin" style="width:100%;justify-content:center;">
+                            <i class="fa-solid fa-right-to-bracket" style="margin-right:8px;"></i> Sign In
+                        </button>
+                        <button class="tutorial-btn tutorial-btn-skip" data-action="next" style="width:100%;justify-content:center;text-align:center;">
+                            Skip for now — explore as guest
+                        </button>
+                    </div>
+                    <div style="display:flex;justify-content:flex-start;margin-top:8px;">
+                        <button class="tutorial-btn tutorial-btn-back" data-action="back"><i class="fa-solid fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>Back</button>
+                    </div>
+                `;
+            } else if (!hasDriver) {
+                // Signed in but no driver
+                const topDrivers = FALLBACK_DRIVERS.slice(0, 6);
+                const driverCards = topDrivers.map(d => {
+                    const color = TEAM_COLORS[d.team] || '#E10600';
+                    return `<div class="tut-driver-chip" data-code="${d.code}" style="--chip-color:${color}">
+                        <span class="tdc-code">${d.code}</span>
+                        <span class="tdc-name">${d.name.split(' ').pop()}</span>
+                    </div>`;
+                }).join('');
+                innerHTML = `
+                    <div class="tutorial-welcome-icon" style="background:rgba(225,6,0,0.15);"><i class="fa-solid fa-flag-checkered"></i></div>
+                    <h3>Pick Your Driver</h3>
+                    <p class="tutorial-welcome-sub">Who are you rooting for this season?</p>
+                    <div class="tut-driver-grid" id="tut-driver-grid">${driverCards}</div>
+                    <div class="tutorial-progress">${dots}</div>
+                    <div class="tutorial-actions">
+                        <button class="tutorial-btn tutorial-btn-back" data-action="back"><i class="fa-solid fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>Back</button>
+                        <button class="tutorial-btn tutorial-btn-next" data-action="next">Skip <i class="fa-solid fa-arrow-right" style="margin-left:6px;font-size:11px;"></i></button>
+                    </div>
+                `;
+            } else {
+                // Signed in + has driver
+                const color = TEAM_COLORS[favDriver?.team] || '#E10600';
+                innerHTML = `
+                    <div class="tutorial-welcome-icon" style="background:var(--green);box-shadow:0 0 40px var(--green-glow);"><i class="fa-solid fa-check"></i></div>
+                    <h3>You're All Set!</h3>
+                    <p class="tutorial-welcome-sub">Following <strong style="color:${color}">${favDriver?.name || profile.favorite_driver_code}</strong> — head to My Garage to track their season.</p>
+                    <div class="tutorial-progress">${dots}</div>
+                    <div class="tutorial-actions">
+                        <button class="tutorial-btn tutorial-btn-back" data-action="back"><i class="fa-solid fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>Back</button>
+                        <button class="tutorial-btn tutorial-btn-next" data-action="next" style="background:var(--green);box-shadow:0 0 20px var(--green-glow);">Get Started <i class="fa-solid fa-rocket" style="margin-left:6px;font-size:11px;"></i></button>
+                    </div>
+                `;
+            }
+            this._card.innerHTML = innerHTML;
+
+            // Wire driver chips
+            this._card.querySelectorAll('.tut-driver-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    this._card.querySelectorAll('.tut-driver-chip').forEach(c => c.classList.remove('selected'));
+                    chip.classList.add('selected');
+                    const code = chip.dataset.code;
+                    const driver = FALLBACK_DRIVERS.find(d => d.code === code);
+                    // Optimistic update — profile:updated + garage will read this immediately
+                    window.userProfile = {
+                        ...(window.userProfile || {}),
+                        favorite_driver_code: code,
+                        favorite_team_id: driver?.team || null,
+                        onboarding_complete: true,
+                    };
+                    Profile.savePreferences({ driverCode: code, teamId: driver?.team || null, complete: true })
+                        .catch(e => console.warn('[Tutorial] savePreferences failed silently', e));
+                    window.dispatchEvent(new CustomEvent('profile:updated'));
+                    // Re-render this step to show the "all set" state
+                    setTimeout(() => this._show(idx), 300);
+                });
+            });
         } else {
             this._spotlight.style.display = '';
             this._arrow.style.display = '';
@@ -1611,6 +1697,7 @@ class Tutorial {
 
     _onAction(action) {
         if (action === 'skip') return this._finish();
+        if (action === 'signin') { this._finish(); Auth.login(); return; }
         if (action === 'back' && this._step > 0) return this._show(this._step - 1);
         if (action === 'next') {
             if (this._step >= TUTORIAL_STEPS.length - 1) return this._finish();
