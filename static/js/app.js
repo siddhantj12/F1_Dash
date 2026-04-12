@@ -12,8 +12,8 @@ window.getDriverColor = (driverCode, teamName) => {
 
 // Driver code to car number mapping
 const DRIVER_NUMBERS = {
-    VER: 1, PER: 11, HAM: 44, RUS: 63, LEC: 16, SAI: 55,
-    NOR: 4, PIA: 81, ALO: 14, STR: 18, GAS: 10, OCO: 31,
+    VER: 33, PER: 11, HAM: 44, RUS: 63, LEC: 16, SAI: 55,
+    NOR: 1, PIA: 81, ALO: 14, STR: 18, GAS: 10, OCO: 31,
     TSU: 22, RIC: 3, BOT: 77, ZHO: 24, MAG: 20, HUL: 27,
     ALB: 23, SAR: 2, LAW: 40, DEV: 45, BEA: 87, COL: 43,
     DOO: 61, HAD: 98, BOR: 38, ANT: 55, DRU: 34, BER: 33,

@@ -31,13 +31,13 @@ const TEAM_COLORS = {
 
 // Fallback 2026 driver roster (used if /api/drivers/2026/R fails to load)
 const FALLBACK_DRIVERS = [
-  { code: 'VER', name: 'Max Verstappen',      number: 1,  team: 'red_bull',     teamName: 'Red Bull Racing' },
+  { code: 'VER', name: 'Max Verstappen',      number: 33, team: 'red_bull',     teamName: 'Red Bull Racing' },
   { code: 'HAD', name: 'Isack Hadjar',        number: 22, team: 'red_bull',     teamName: 'Red Bull Racing' },
   { code: 'LEC', name: 'Charles Leclerc',     number: 16, team: 'ferrari',      teamName: 'Ferrari' },
   { code: 'HAM', name: 'Lewis Hamilton',      number: 44, team: 'ferrari',      teamName: 'Ferrari' },
   { code: 'RUS', name: 'George Russell',      number: 63, team: 'mercedes',     teamName: 'Mercedes' },
   { code: 'ANT', name: 'Andrea Kimi Antonelli', number: 12, team: 'mercedes',   teamName: 'Mercedes' },
-  { code: 'NOR', name: 'Lando Norris',        number: 4,  team: 'mclaren',      teamName: 'McLaren' },
+  { code: 'NOR', name: 'Lando Norris',        number: 1,  team: 'mclaren',      teamName: 'McLaren' },
   { code: 'PIA', name: 'Oscar Piastri',       number: 81, team: 'mclaren',      teamName: 'McLaren' },
   { code: 'ALO', name: 'Fernando Alonso',     number: 14, team: 'aston_martin', teamName: 'Aston Martin' },
   { code: 'STR', name: 'Lance Stroll',        number: 18, team: 'aston_martin', teamName: 'Aston Martin' },
