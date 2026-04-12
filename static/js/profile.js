@@ -369,6 +369,7 @@ const Profile = {
     // Always persist locally first — if the API call fails for any reason,
     // the pending sync will be flushed on the next successful login.
     _savePendingProfileSync(body);
+    console.log('[Profile] savePreferences → calling API', body);
 
     const resp = await fetch('/api/me/preferences', {
       method: 'PUT',
@@ -378,12 +379,17 @@ const Profile = {
       },
       body: JSON.stringify(body),
     });
-    if (!resp.ok) throw new Error(`/api/me/preferences returned ${resp.status}`);
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      console.error(`[Profile] savePreferences failed: ${resp.status}`, errText);
+      throw new Error(`/api/me/preferences returned ${resp.status}: ${errText}`);
+    }
     _profile = await resp.json();
     window.userProfile = _profile;
     _clearPendingProfileSync();   // API succeeded — no need to re-flush
     _saveCachedAuthProfile(_profile);
     _updateSidebarFooter(_profile);
+    console.log('[Profile] savePreferences ✓ driver:', _profile.favorite_driver_code);
     return _profile;
   },
 
@@ -430,7 +436,7 @@ async function _showOnboardingModal() {
 
       <div class="onboarding-header">
         <div class="onboarding-logo"><i class="fa-solid fa-flag-checkered"></i></div>
-        <h1 id="onboarding-title">Welcome to F1 Dash</h1>
+        <h1 id="onboarding-title">Welcome to F1 Core</h1>
         <p>Pick your driver and team to personalise your experience.</p>
       </div>
 

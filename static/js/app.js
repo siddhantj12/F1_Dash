@@ -1272,7 +1272,7 @@ function renderComparisonCharts(comparisonData) {
 const TUTORIAL_STEPS = [
     {
         type: 'welcome',
-        title: 'Welcome to F1 Dash',
+        title: 'Welcome to F1 Core',
         body: 'Your personal Formula 1 telemetry and race analytics dashboard — built for every fan, from casual to hardcore.',
         features: [
             { icon: 'fa-solid fa-gauge-high', text: 'Real telemetry data from every F1 session since 2018' },

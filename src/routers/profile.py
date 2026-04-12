@@ -4,6 +4,7 @@ GET  /api/me               — return authenticated user's profile + favorites
 PUT  /api/me/preferences   — update favorite_driver_code + favorite_team_id
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from typing import Optional
@@ -11,6 +12,7 @@ from typing import Optional
 from src.middleware.auth0 import require_auth
 from src.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Profile"])
 
 
@@ -72,22 +74,37 @@ async def update_preferences(
 ):
     """Update favorite driver, favorite team, and onboarding status."""
     sub = request.state.user_sub
+    email = getattr(request.state, "user_email", "")
     sb = _get_supabase()
 
-    update_data = {"onboarding_complete": prefs.onboarding_complete}
-    if prefs.favorite_driver_code is not None:
-        update_data["favorite_driver_code"] = prefs.favorite_driver_code
-    if prefs.favorite_team_id is not None:
-        update_data["favorite_team_id"] = prefs.favorite_team_id
-    if prefs.display_name is not None:
-        update_data["display_name"] = prefs.display_name
+    logger.info(f"[preferences] saving for sub={sub} driver={prefs.favorite_driver_code} team={prefs.favorite_team_id}")
 
-    result = (
-        sb.table("user_profiles")
-        .update(update_data)
-        .eq("auth0_sub", sub)
-        .execute()
-    )
-    if not result.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
-    return result.data[0]
+    upsert_data = {
+        "auth0_sub": sub,
+        "onboarding_complete": prefs.onboarding_complete,
+    }
+    if prefs.favorite_driver_code is not None:
+        upsert_data["favorite_driver_code"] = prefs.favorite_driver_code
+    if prefs.favorite_team_id is not None:
+        upsert_data["favorite_team_id"] = prefs.favorite_team_id
+    if prefs.display_name is not None:
+        upsert_data["display_name"] = prefs.display_name
+    if email:
+        upsert_data["email"] = email
+
+    try:
+        result = (
+            sb.table("user_profiles")
+            .upsert(upsert_data, on_conflict="auth0_sub")
+            .execute()
+        )
+        if not result.data:
+            logger.error(f"[preferences] upsert returned no data for sub={sub}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save preferences")
+        logger.info(f"[preferences] saved OK for sub={sub}")
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[preferences] upsert error for sub={sub}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
