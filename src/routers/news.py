@@ -9,23 +9,13 @@ router = APIRouter()
 
 # In-memory cache: { "articles": [...], "fetched_at": timestamp }
 _NEWS_CACHE: dict = {}
-_CACHE_TTL = 600  # 10 minutes
+_CACHE_TTL = 900  # 15 minutes (frontend auto-refreshes every 30 min)
 
 RSS_FEEDS = [
     {
         "url": "https://www.motorsport.com/rss/f1/news/",
         "source": "Motorsport.com",
         "source_icon": "fa-solid fa-flag-checkered",
-    },
-    {
-        "url": "https://www.autosport.com/rss/f1",
-        "source": "Autosport",
-        "source_icon": "fa-solid fa-trophy",
-    },
-    {
-        "url": "https://www.planetf1.com/feed",
-        "source": "PlanetF1",
-        "source_icon": "fa-solid fa-globe",
     },
     {
         "url": "https://the-race.com/feed/",
@@ -37,19 +27,54 @@ RSS_FEEDS = [
         "source": "RacingNews365",
         "source_icon": "fa-solid fa-newspaper",
     },
+    {
+        "url": "https://www.gpfans.com/en/rss/",
+        "source": "GPFans",
+        "source_icon": "fa-solid fa-rss",
+    },
+    {
+        "url": "https://www.crash.net/rss/f1",
+        "source": "Crash.net",
+        "source_icon": "fa-solid fa-car-burst",
+    },
+    {
+        "url": "https://f1i.com/feed",
+        "source": "F1i",
+        "source_icon": "fa-solid fa-i-cursor",
+    },
+    {
+        "url": "https://www.skysports.com/rss/12040",
+        "source": "Sky Sports F1",
+        "source_icon": "fa-solid fa-tv",
+    },
+    {
+        "url": "https://www.bbc.co.uk/sport/formula1/rss.xml",
+        "source": "BBC Sport",
+        "source_icon": "fa-solid fa-b",
+    },
+    {
+        "url": "https://feeds.feedburner.com/BreakingF1News",
+        "source": "BreakingF1",
+        "source_icon": "fa-solid fa-circle-exclamation",
+    },
+    {
+        "url": "https://www.motorsportweek.com/feed/",
+        "source": "Motorsport Week",
+        "source_icon": "fa-solid fa-calendar-week",
+    },
 ]
 
 TEAM_KEYWORDS = {
-    "Red Bull": {"keywords": ["red bull", "verstappen", "perez", "newey", "horner", "lawson", "tsunoda", "rb "], "color": "#3671C6"},
-    "Ferrari": {"keywords": ["ferrari", "leclerc", "hamilton", "sainz", "vasseur", "maranello"], "color": "#F91536"},
+    "Red Bull": {"keywords": ["red bull", "verstappen", "hadjar", "horner", "milton keynes"], "color": "#3671C6"},
+    "Ferrari": {"keywords": ["ferrari", "leclerc", "hamilton", "vasseur", "maranello", "scuderia"], "color": "#F91536"},
     "Mercedes": {"keywords": ["mercedes", "russell", "antonelli", "wolff", "brackley"], "color": "#6CD3BF"},
     "McLaren": {"keywords": ["mclaren", "norris", "piastri", "stella", "woking"], "color": "#FF8000"},
-    "Aston Martin": {"keywords": ["aston martin", "alonso", "stroll", "krack", "silverstone"], "color": "#358C75"},
+    "Aston Martin": {"keywords": ["aston martin", "alonso", "stroll", "krack"], "color": "#358C75"},
     "Alpine": {"keywords": ["alpine", "gasly", "doohan", "enstone"], "color": "#FF87BC"},
-    "Williams": {"keywords": ["williams", "albon", "colapinto", "grove"], "color": "#64C4FF"},
+    "Williams": {"keywords": ["williams", "albon", "sainz", "colapinto", "grove"], "color": "#64C4FF"},
     "Haas": {"keywords": ["haas", "bearman", "ocon", "kannapolis"], "color": "#B6BABD"},
-    "Sauber": {"keywords": ["sauber", "audi", "bottas", "hulkenberg", "bortoleto"], "color": "#52E252"},
-    "Racing Bulls": {"keywords": ["racing bulls", "vcarb", "ricciardo", "hadjar"], "color": "#6692FF"},
+    "Audi": {"keywords": ["audi", "sauber", "hulkenberg", "bortoleto", "hinwil"], "color": "#52E252"},
+    "Racing Bulls": {"keywords": ["racing bulls", "vcarb", "lawson", "hadjar", "lindblad", "faenza"], "color": "#6692FF"},
 }
 
 CATEGORY_KEYWORDS = {
@@ -168,7 +193,7 @@ async def _fetch_feed(client: httpx.AsyncClient, feed: dict) -> list:
         root = ET.fromstring(resp.text)
         items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
 
-        for item in items[:15]:
+        for item in items[:20]:
             title = _get_text(item, "title")
             link = _get_text(item, "link")
             if not link:
