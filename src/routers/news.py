@@ -86,6 +86,24 @@ CATEGORY_KEYWORDS = {
 }
 
 
+F1_KEYWORDS = [
+    "formula 1", "formula one", "f1", "grand prix", "gp", "fia",
+    "verstappen", "hamilton", "norris", "leclerc", "russell", "piastri",
+    "sainz", "alonso", "stroll", "gasly", "doohan", "bearman", "ocon",
+    "albon", "hulkenberg", "bortoleto", "hadjar", "lawson", "lindblad", "antonelli",
+    "red bull", "ferrari", "mercedes", "mclaren", "aston martin", "alpine",
+    "williams", "haas", "audi", "sauber", "racing bulls",
+    "pole position", "podium", "pit stop", "qualifying", "fastest lap",
+    "motor sport", "motorsport", "monza", "silverstone", "monaco", "spa",
+    "bahrain", "jeddah", "miami", "imola", "barcelona", "zandvoort",
+    "singapore", "suzuka", "austin", "mexico city", "interlagos", "las vegas", "abu dhabi",
+]
+
+def _is_f1_article(title: str, desc: str) -> bool:
+    text = (title + " " + desc).lower()
+    return any(kw in text for kw in F1_KEYWORDS)
+
+
 def _detect_team(title: str, desc: str) -> dict | None:
     text = (title + " " + desc).lower()
     for team, info in TEAM_KEYWORDS.items():
@@ -210,7 +228,7 @@ async def _fetch_feed(client: httpx.AsyncClient, feed: dict) -> list:
             team = _detect_team(title, description)
             category = _detect_category(title, description)
 
-            if title:
+            if title and _is_f1_article(title, description):
                 articles.append({
                     "title": title,
                     "description": description,
