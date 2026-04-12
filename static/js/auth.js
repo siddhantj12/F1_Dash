@@ -232,14 +232,24 @@ const Auth = {
     if (_client) {
       try {
         const accessToken = await _getAccessToken();
-        if (accessToken) return accessToken;
+        if (accessToken) {
+          console.log('[Auth] getToken → JWT access token ✓');
+          return accessToken;
+        }
+        console.log('[Auth] getToken → access token was opaque/null, trying ID token');
       } catch (e) {
         console.warn('[Auth] getTokenSilently failed:', e.error || e.message);
       }
       const idToken = await _cacheIdToken();
-      if (idToken) return idToken;
+      if (idToken) {
+        console.log('[Auth] getToken → ID token ✓', idToken.substring(0, 20) + '...');
+        return idToken;
+      }
+      console.warn('[Auth] getToken → _cacheIdToken returned null!');
     }
-    return _getAnyCachedToken();
+    const cached = _getAnyCachedToken();
+    console.log('[Auth] getToken → sessionStorage fallback:', cached ? cached.substring(0, 20) + '...' : 'NULL');
+    return cached;
   },
 
   getUser() { return Auth.user; },

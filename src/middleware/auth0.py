@@ -10,8 +10,11 @@ Usage in route handlers:
         sub = request.state.user_sub
 """
 
+import logging
 import httpx
 from functools import lru_cache
+
+logger = logging.getLogger(__name__)
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -34,10 +37,16 @@ def _get_jwks() -> dict:
 
 def _decode_token(token: str) -> dict:
     """Decode and validate an Auth0 JWT, returning the claims."""
+    # Quick sanity check — opaque tokens have no dots
+    if token.count('.') != 2:
+        logger.error(f"[auth] token is not a JWT (length={len(token)}, dots={token.count('.')})")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is not a JWT")
+
     jwks = _get_jwks()
     try:
         unverified_header = jwt.get_unverified_header(token)
     except JWTError as e:
+        logger.error(f"[auth] invalid token header: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token header: {e}")
 
     rsa_key = {}
@@ -53,10 +62,12 @@ def _decode_token(token: str) -> dict:
             break
 
     if not rsa_key:
+        logger.error(f"[auth] no JWKS key matched kid={unverified_header.get('kid')}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to find matching signing key")
 
     # Try configured API audience first (access token), then fall back to clientId (ID token)
     audiences_to_try = list({settings.auth0_audience, settings.auth0_client_id} - {""})
+    logger.info(f"[auth] trying audiences: {audiences_to_try}")
     last_error = None
     for aud in audiences_to_try:
         try:
@@ -67,9 +78,12 @@ def _decode_token(token: str) -> dict:
                 audience=aud,
                 issuer=f"https://{settings.auth0_domain}/",
             )
+            logger.info(f"[auth] token valid for aud={aud} sub={payload.get('sub')}")
             return payload
         except JWTError as e:
+            logger.warning(f"[auth] audience={aud} failed: {e}")
             last_error = e
+    logger.error(f"[auth] all audiences failed. last_error={last_error}")
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token validation failed: {last_error}")
 
 
