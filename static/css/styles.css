@@ -1261,6 +1261,9 @@ select, input { font-family: var(--font-body); }
 /* Mobile toggle */
 .nav-toggle { display: none; background: transparent; border: none; color: var(--text-primary); font-size: 18px; }
 
+/* Sidebar overlay — hidden on desktop, shown only via media query + .visible class */
+.sidebar-overlay { display: none; }
+
 /* =========================================
    ONBOARDING TUTORIAL
    ========================================= */
@@ -1663,12 +1666,197 @@ select, input { font-family: var(--font-body); }
 }
 
 @media (max-width: 768px) {
-  .sidebar { position: fixed; left: -240px; top: 0; bottom: 0; transition: left var(--t-normal); z-index: 50; }
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    left: -240px;
+    top: 0;
+    bottom: 0;
+    transition: left var(--t-normal);
+    z-index: 50;
+  }
   .sidebar.open { left: 0; }
-  .nav-toggle { display: block; }
-  .telemetry-layout { grid-template-columns: 1fr; }
-  .control-panel, .right-panel { width: 100%; }
-  .track-canvas-container { height: 240px; }
+
+  /* Overlay that closes sidebar on tap */
+  .sidebar-overlay {
+    display: block; /* override base display:none on mobile */
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-normal);
+  }
+  .sidebar-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* ── Topbar ── */
+  .nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .top-bar { padding: 0 12px; }
+  .topbar-right { gap: 6px; }
+  /* Hide less important topbar items on small screens */
+  .status-pill { display: none; }
+
+  /* ── Nav items — large tap targets ── */
+  .nav-links li {
+    padding: 12px 12px;
+    min-height: 44px;
+  }
+
+  /* ── Main content ── */
+  .main-content { width: 100%; }
+
+  /* ── Views ── */
+  .view { padding: 12px 12px; }
+
+  /* ── Telemetry layout — single column, control → center → right ── */
+  .telemetry-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 12px;
+    min-height: unset;
+  }
+  .control-panel {
+    width: 100%;
+    order: 1;
+    overflow-y: visible;
+  }
+  .center-panel { order: 2; }
+  .right-panel {
+    width: 100%;
+    order: 3;
+    overflow-y: visible;
+  }
+
+  /* ── Driver cards — full width ── */
+  .driver-card { width: 100%; }
+
+  /* ── Track canvas shorter on mobile ── */
+  .track-canvas-container { height: 220px; }
+
+  /* ── Charts — responsive height ── */
+  .chart-wrapper canvas {
+    max-width: 100%;
+  }
+  .chart-card { min-height: 180px; }
+  .chart-wrapper { min-height: 120px; }
+
+  /* ── Insight chips — allow wrap on mobile ── */
+  .insight-chips { flex-wrap: wrap; }
+
+  /* ── News grid — single column ── */
+  .news-grid { grid-template-columns: 1fr; }
+
+  /* ── News hero — shorter ── */
+  .hero-spotlight {
+    height: 260px;
+    padding: 20px 18px;
+  }
+  .hero-headline { font-size: 22px; }
+
+  /* ── Garage layout ── */
+  .garage-layout { padding: 16px 12px; }
+  .garage-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 16px;
+  }
+  .garage-hero-stats { flex-wrap: wrap; gap: 16px; }
+  .garage-body { grid-template-columns: 1fr; }
+  .garage-chart-wrap { height: 180px; }
+
+  /* ── Results table — allow horizontal scroll ── */
+  .garage-col { overflow-x: auto; padding: 14px 12px; }
+  .garage-results-table { font-size: 0.78rem; }
+
+  /* ── Tutorial card — centered, wider ── */
+  .tutorial-card {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 90vw !important;
+    max-width: 380px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .tutorial-key-hint { display: none; }
+
+  /* ── Profile drawer ── */
+  .pd-panel {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  /* ── Font size / spacing adjustments ── */
+  html { font-size: 13px; }
+  .track-name { font-size: 16px; }
+  .standings-title { font-size: 13px; }
+  .hero-headline { font-size: 22px; }
+}
+
+/* ============================================================
+   EXTRA-SMALL PHONES (≤ 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+  /* Topbar breadcrumb — shorten */
+  .topbar-breadcrumb > span:first-child { display: none; }
+  .topbar-breadcrumb .sep { display: none; }
+
+  /* Icon buttons in topbar — hide less essential ones */
+  .top-bar .icon-btn:nth-child(2) { display: none; }
+
+  /* Driver number — reduce size */
+  .driver-num { font-size: 28px; }
+
+  /* Track canvas */
+  .track-canvas-container { height: 180px; }
+
+  /* News hero */
+  .hero-spotlight { height: 200px; padding: 16px 14px; }
+  .hero-headline { font-size: 18px; }
+
+  /* Garage hero */
+  .garage-hero-number { font-size: 2rem; }
+  .garage-hero-name { font-size: 1.1rem; }
+
+  /* Onboarding step labels — hide text, keep number bubbles */
+  .ob-step > span + * { display: none; }
+  .ob-step-line { max-width: 28px; }
+  .onboarding-header { padding: 20px 16px 14px; }
+  .onboarding-footer { padding: 12px 16px; }
+  .onboarding-step-panel { padding: 14px 14px; }
+
+  /* Select elements — larger tap area */
+  .glass-select { padding: 12px 36px 12px 14px; font-size: 14px; }
+
+  /* CTA button */
+  .btn-primary.huge-cta { padding: 14px 24px; font-size: 14px; }
+
+  /* News filter bar — horizontal scroll */
+  .news-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .news-filters::-webkit-scrollbar { height: 0; }
+  .news-filter-btn { flex-shrink: 0; }
+
+  /* Tutorial card */
+  .tutorial-card {
+    width: 92vw !important;
+    padding: 18px 16px;
+  }
+  .tutorial-card h3 { font-size: 16px; }
+  .tutorial-card p { font-size: 12.5px; }
 }
 
 /* ============================================================

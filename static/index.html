@@ -41,11 +41,14 @@
 <body>
   <div class="app-container">
 
+    <!-- Mobile sidebar overlay (tap to close) -->
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
     <!-- ===================== SIDEBAR ===================== -->
     <nav class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-icon"><i class="fa-solid fa-flag-checkered"></i></div>
-        <div class="brand-text">F1 <span>Dash</span></div>
+        <div class="brand-text">F1 <span>Core</span></div>
       </div>
 
       <div class="search-bar">
@@ -401,8 +404,32 @@
     });
 
     // Sidebar toggle (mobile)
+    function _openSidebar() {
+      document.getElementById('sidebar')?.classList.add('open');
+      document.getElementById('sidebar-overlay')?.classList.add('visible');
+    }
+    function _closeSidebar() {
+      document.getElementById('sidebar')?.classList.remove('open');
+      document.getElementById('sidebar-overlay')?.classList.remove('visible');
+    }
+
     document.getElementById('nav-toggle')?.addEventListener('click', () => {
-      document.getElementById('sidebar')?.classList.toggle('open');
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar?.classList.contains('open')) {
+        _closeSidebar();
+      } else {
+        _openSidebar();
+      }
+    });
+
+    // Close sidebar when overlay is tapped
+    document.getElementById('sidebar-overlay')?.addEventListener('click', _closeSidebar);
+
+    // Close sidebar when a nav item is tapped (mobile UX)
+    document.querySelectorAll('.nav-links li[data-target]').forEach(li => {
+      li.addEventListener('click', () => {
+        if (window.innerWidth <= 768) _closeSidebar();
+      });
     });
 
     // ======== NEWS & INSIGHTS ========

@@ -367,6 +367,47 @@
 .ob-btn-next:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
 .ob-btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ============================================================
+   ONBOARDING RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .onboarding-dialog {
+    width: 96vw;
+    max-height: 92vh;
+    border-radius: var(--r-lg);
+  }
+  .onboarding-header {
+    padding: 22px 18px 14px;
+  }
+  .onboarding-header h1 { font-size: 1.35rem; }
+  .onboarding-steps { padding: 12px 18px; gap: 4px; }
+  .ob-step { font-size: 0.72rem; gap: 5px; }
+  .ob-step span { width: 20px; height: 20px; font-size: 0.68rem; }
+  .onboarding-step-panel { padding: 14px 16px; }
+  .ob-driver-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .ob-team-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .onboarding-footer { padding: 12px 16px; }
+}
+
+@media (max-width: 480px) {
+  .onboarding-dialog {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    /* Full-screen on tiny phones */
+  }
+  #onboarding-modal {
+    align-items: flex-start;
+  }
+  .onboarding-header h1 { font-size: 1.15rem; }
+  .ob-driver-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ob-driver-photo-wrap { width: 56px; height: 56px; }
+  .ob-driver-number { font-size: 1rem; }
+  .ob-driver-name { font-size: 0.7rem; }
+  .ob-btn-next { padding: 10px 18px; font-size: 0.85rem; }
+  .ob-btn-back { padding: 9px 14px; font-size: 0.82rem; }
+}
+
 /* Sign-in button in topbar */
 .sign-in-btn {
   background: var(--red) !important;
