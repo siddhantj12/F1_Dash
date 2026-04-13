@@ -228,7 +228,7 @@ async def _fetch_feed(client: httpx.AsyncClient, feed: dict) -> list:
             team = _detect_team(title, description)
             category = _detect_category(title, description)
 
-            if title and _is_f1_article(title, description):
+            if title and image and _is_f1_article(title, description):
                 articles.append({
                     "title": title,
                     "description": description,
