@@ -1281,9 +1281,9 @@ select, input { font-family: var(--font-body); }
   inset: 0;
   z-index: 9998;
   /* Near-black — the element renders at natural color above this, creating pure contrast */
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.93);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   transition: opacity var(--t-normal);
   opacity: 0;
 }
@@ -1296,10 +1296,10 @@ select, input { font-family: var(--font-body); }
   border-radius: 12px;
   /* The massive spread shadow IS the dark overlay — the box itself is the clear window */
   box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.82),
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 0 3px rgba(225, 6, 0, 0.7),
-    0 0 24px 6px rgba(225, 6, 0, 0.35);
+    0 0 0 9999px rgba(0, 0, 0, 0.93),
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 0 3px rgba(225, 6, 0, 0.8),
+    0 0 20px 4px rgba(225, 6, 0, 0.3);
   background: transparent;
   pointer-events: none;
   transition: top 0.4s cubic-bezier(0.4,0,0.2,1),
@@ -1320,20 +1320,25 @@ select, input { font-family: var(--font-body); }
   }
   50% {
     box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.82),
-      0 0 0 1px rgba(255, 255, 255, 0.18),
-      0 0 0 3px rgba(225, 6, 0, 0.9),
-      0 0 32px 10px rgba(225, 6, 0, 0.5);
+      0 0 0 9999px rgba(0, 0, 0, 0.93),
+      0 0 0 1px rgba(255, 255, 255, 0.25),
+      0 0 0 3px rgba(225, 6, 0, 1),
+      0 0 28px 8px rgba(225, 6, 0, 0.45);
   }
 }
 
-/* The highlighted element renders completely naturally above the backdrop —
-   no filter hacks, pure contrast does the work */
+/* Highlighted element — lifted above backdrop, outlined + illuminated */
 .tutorial-highlight {
   position: relative;
   z-index: 10000 !important;
   border-radius: 10px;
-  transition: none !important;
+  transition: box-shadow 0.3s ease, background 0.3s ease !important;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.85),
+    0 0 0 4px rgba(225, 6, 0, 0.5),
+    0 0 40px 8px rgba(255, 255, 255, 0.12),
+    inset 0 0 60px rgba(255, 255, 255, 0.06) !important;
+  background: rgba(38, 38, 50, 0.98) !important;
 }
 
 .tutorial-card {
