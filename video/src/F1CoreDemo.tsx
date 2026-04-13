@@ -11,934 +11,793 @@ import {
 } from "remotion";
 import { Trail } from "@remotion/motion-blur";
 
-// ─── Brand tokens ───────────────────────────────────────────────────────────
+// ─── Brand ──────────────────────────────────────────────────────────────────
 const C = {
   red: "#E10600",
-  black: "#0C0C10",
-  white: "#F0F0F5",
+  black: "#07070A",
+  white: "#F2F2F7",
   mclaren: "#FF8000",
   ferrari: "#F91536",
   mercedes: "#6CD3BF",
-  dimGray: "#1A1A22",
-  panel: "#14141C",
-  border: "rgba(255,255,255,0.07)",
+  redbull: "#3671C6",
+  panel: "#0F0F16",
+  panelBright: "#1A1A26",
+  border: "rgba(255,255,255,0.06)",
 } as const;
 
-const FONT_HEAD = "'Barlow Condensed', sans-serif";
-const FONT_BODY = "'Inter', sans-serif";
+const HEAD = "'Barlow Condensed', sans-serif";
+const BODY = "'Inter', sans-serif";
+const MONO = "'Courier New', monospace";
 
-// ─── Easing helper ──────────────────────────────────────────────────────────
-const EASE = Easing.bezier(0.4, 0, 0.2, 1);
+// ─── Utils ───────────────────────────────────────────────────────────────────
+const E = Easing.bezier(0.4, 0, 0.2, 1);
+const EOut = Easing.bezier(0.0, 0.0, 0.2, 1);
 
-function lerp(frame: number, inRange: [number, number], outRange: [number, number]) {
-  return interpolate(frame, inRange, outRange, {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: EASE,
-  });
+function mv(f: number, i: [number,number], o: [number,number], ease = E) {
+  return interpolate(f, i, o, { extrapolateLeft:"clamp", extrapolateRight:"clamp", easing: ease });
 }
 
-function spr(frame: number, fps: number, delay = 0) {
-  return spring({
-    fps,
-    frame: frame - delay,
-    config: { stiffness: 120, damping: 14 },
-    durationInFrames: 45,
-  });
+function spr(f: number, fps: number, delay = 0, stiff = 140, damp = 13) {
+  return spring({ fps, frame: f - delay, config: { stiffness: stiff, damping: damp }, durationInFrames: 40 });
 }
 
-// ─── Shared components ───────────────────────────────────────────────────────
+// ─── Shared visual atoms ─────────────────────────────────────────────────────
 
-/** Horizontal red rule that sweeps left→right */
-function RedSweep({ startFrame, width = "100%" }: { startFrame: number; width?: string | number }) {
-  const frame = useCurrentFrame();
-  const scaleX = lerp(frame, [startFrame, startFrame + 18], [0, 1]);
+/** Full-frame flash — white or red, fades fast */
+function Flash({ frame, at, color = "#fff", dur = 6 }: { frame:number; at:number; color?:string; dur?:number }) {
+  const op = mv(frame, [at, at + dur], [1, 0]);
+  if (op <= 0) return null;
+  return <div style={{ position:"absolute", inset:0, background:color, opacity:op, zIndex:200, pointerEvents:"none" }} />;
+}
+
+/** Noise grain texture */
+function Grain({ opacity = 0.3 }: { opacity?: number }) {
   return (
-    <div
-      style={{
-        height: 2,
-        background: `linear-gradient(90deg, ${C.red} 0%, #FF4020 60%, transparent 100%)`,
-        transformOrigin: "left center",
-        transform: `scaleX(${scaleX})`,
-        width,
-        borderRadius: 1,
-      }}
-    />
+    <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity, pointerEvents:"none", zIndex:98 }}>
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" stitchTiles="stitch" />
+        <feColorMatrix type="saturate" values="0" />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#noise)" opacity="0.08" />
+    </svg>
   );
 }
 
-/** Horizontal slice-wipe overlay — covers then reveals, for scene transitions */
-function SliceWipe({ triggerFrame, color = C.black }: { triggerFrame: number; color?: string }) {
-  const frame = useCurrentFrame();
+/** Scan-line overlay */
+function Scanlines({ opacity = 0.06 }: { opacity?: number }) {
+  return (
+    <div style={{
+      position:"absolute", inset:0, pointerEvents:"none", zIndex:97,
+      backgroundImage:`repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,${opacity}) 4px)`,
+    }} />
+  );
+}
+
+/** Corner HUD brackets */
+function HUDCorners({ frame, startFrame, color = C.red, size = 28, gap = 12 }: { frame:number; startFrame:number; color?:string; size?:number; gap?:number }) {
+  const op = mv(frame, [startFrame, startFrame+14], [0, 1]);
+  const s = [`top:${gap}px;left:${gap}px`, `top:${gap}px;right:${gap}px`, `bottom:${gap}px;left:${gap}px`, `bottom:${gap}px;right:${gap}px`];
+  const borders = [
+    { borderTop:`1.5px solid ${color}`, borderLeft:`1.5px solid ${color}` },
+    { borderTop:`1.5px solid ${color}`, borderRight:`1.5px solid ${color}` },
+    { borderBottom:`1.5px solid ${color}`, borderLeft:`1.5px solid ${color}` },
+    { borderBottom:`1.5px solid ${color}`, borderRight:`1.5px solid ${color}` },
+  ];
+  return (
+    <>
+      {borders.map((b, i) => (
+        <div key={i} style={{
+          position:"absolute", width:size, height:size, opacity:op,
+          ...Object.fromEntries(s[i].split(";").map(p => { const [k,v] = p.split(":"); return [k.trim(), v.trim()]; })),
+          ...b,
+        }} />
+      ))}
+    </>
+  );
+}
+
+/** Horizontal sweep line */
+function Sweep({ frame, startFrame, color = C.red, y = 0 }: { frame:number; startFrame:number; color?:string; y?:number }) {
+  const { width } = useVideoConfig();
+  const scaleX = mv(frame, [startFrame, startFrame+20], [0, 1]);
+  return (
+    <div style={{
+      position:"absolute", top:y, left:0, right:0, height:2,
+      background:`linear-gradient(90deg, ${color} 0%, ${color}CC 70%, transparent 100%)`,
+      transformOrigin:"left center", transform:`scaleX(${scaleX})`,
+      boxShadow:`0 0 8px ${color}88`,
+    }} />
+  );
+}
+
+/** Vertical speed lines radiating from center — creates velocity feel */
+function SpeedLines({ frame, startFrame, count = 12, color = C.red }: { frame:number; startFrame:number; count?:number; color?:string }) {
   const { width, height } = useVideoConfig();
-
-  // Slide in from left (covers), then slide out to right (reveals next scene)
-  const x = lerp(frame, [triggerFrame, triggerFrame + 8], [-width, 0]);
-  const x2 = lerp(frame, [triggerFrame + 8, triggerFrame + 16], [0, width]);
-  const translateX = frame < triggerFrame + 8 ? x : x2;
-
+  const op = mv(frame, [startFrame, startFrame+20, startFrame+40], [0, 0.15, 0]);
+  if (op <= 0) return null;
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width,
-        height,
-        background: color,
-        transform: `translateX(${translateX}px)`,
-        zIndex: 100,
-        pointerEvents: "none",
-      }}
-    />
-  );
-}
-
-/** Noise/grain texture overlay */
-function Grain() {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E")`,
-        backgroundSize: "200px 200px",
-        opacity: 0.35,
-        mixBlendMode: "overlay",
-        pointerEvents: "none",
-        zIndex: 99,
-      }}
-    />
+    <svg style={{ position:"absolute", inset:0, width, height, opacity:op, pointerEvents:"none", zIndex:50 }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const angle = (i / count) * Math.PI * 2;
+        const len = 500 + Math.sin(i * 7) * 200;
+        const cx = width / 2, cy = height / 2;
+        const ex = cx + Math.cos(angle) * len;
+        const ey = cy + Math.sin(angle) * len;
+        return (
+          <line key={i} x1={cx} y1={cy} x2={ex} y2={ey}
+            stroke={color} strokeWidth={1 + (i % 3) * 0.5} opacity={0.3 + (i % 4) * 0.15}
+          />
+        );
+      })}
+    </svg>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE 1 — Cold Open (frames 0–120 = 0–2s)
+// SCENE 1 — Cold Open 0–120 (2s)
+// F1 CORE slams in, letter stagger, red sweep, speed lines
 // ═══════════════════════════════════════════════════════════════════════════
-function Scene1ColdOpen() {
+function Scene1() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Logo slams in: scale 0.8→1, opacity 0→1
-  const logoScale = lerp(frame, [0, 24], [0.8, 1]);
-  const logoOpacity = lerp(frame, [0, 12], [0, 1]);
+  // Stagger each letter of "F1 CORE"
+  const letters = ["F", "1", " ", "C", "O", "R", "E"];
+  const glow = Math.sin((frame / 30) * Math.PI) * 0.5 + 0.5;
 
-  // "F1 CORE" wordmark
-  const coreOpacity = lerp(frame, [8, 28], [0, 1]);
-  const coreY = lerp(frame, [8, 28], [12, 0]);
+  // Tagline slides up
+  const tagOp = mv(frame, [42, 58], [0, 1]);
+  const tagY  = mv(frame, [42, 58], [14, 0]);
 
-  // Red badge: TELEMETRY PLATFORM
-  const badgeOpacity = lerp(frame, [22, 40], [0, 1]);
-
-  // Tagline
-  const tagOpacity = lerp(frame, [35, 55], [0, 1]);
-  const tagY = lerp(frame, [35, 55], [8, 0]);
-
-  // Radial glow behind logo
-  const glowOpacity = lerp(frame, [0, 30], [0, 0.6]);
+  // URL counter — thef1core.com types in
+  const urlChars = "thef1core.com";
+  const urlProgress = mv(frame, [60, 95], [0, urlChars.length]);
+  const urlVisible = urlChars.slice(0, Math.floor(urlProgress));
 
   return (
-    <AbsoluteFill style={{ background: C.black, alignItems: "center", justifyContent: "center" }}>
+    <AbsoluteFill style={{ background: C.black, alignItems:"center", justifyContent:"center" }}>
       <Grain />
+      <Scanlines />
 
-      {/* Radial glow */}
-      <div
-        style={{
-          position: "absolute",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, rgba(225,6,0,0.18) 0%, transparent 70%)`,
-          opacity: glowOpacity,
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }}
-      />
+      {/* Red flash on entry */}
+      <Flash frame={frame} at={0} color={C.red} dur={8} />
 
-      <div style={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 0 }}>
-        {/* Logo block */}
-        <Trail layers={4} lagInFrames={0.5} trailOpacity={0.15}>
-          <div
-            style={{
-              transform: `scale(${logoScale})`,
-              opacity: logoOpacity,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 0,
-            }}
-          >
-            {/* F1 flag-style mark */}
-            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
-              {/* Chequered F1 icon */}
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  background: `
-                    linear-gradient(45deg, ${C.red} 25%, transparent 25%) 0 0,
-                    linear-gradient(-45deg, ${C.red} 25%, transparent 25%) 0 8px,
-                    linear-gradient(45deg, transparent 75%, ${C.red} 75%) 0 8px,
-                    linear-gradient(-45deg, transparent 75%, ${C.red} 75%) 0 0
-                  `,
-                  backgroundColor: C.white,
-                  backgroundSize: "16px 16px",
-                  borderRadius: 6,
-                }}
-              />
-              <div
-                style={{
-                  fontFamily: FONT_HEAD,
-                  fontSize: 72,
+      {/* Deep radial glow */}
+      <div style={{
+        position:"absolute", width:900, height:900, borderRadius:"50%",
+        background:`radial-gradient(circle, rgba(225,6,0,0.14) 0%, rgba(225,6,0,0.04) 40%, transparent 70%)`,
+        top:"50%", left:"50%", transform:"translate(-50%,-50%)",
+        opacity: mv(frame, [0, 30], [0, 1]),
+      }} />
+
+      <SpeedLines frame={frame} startFrame={0} count={18} />
+
+      {/* HUD corners */}
+      <HUDCorners frame={frame} startFrame={28} color={C.red} size={36} gap={40} />
+
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:0 }}>
+
+        {/* Massive wordmark — letters slam in staggered */}
+        <Trail layers={3} lagInFrames={0.6} trailOpacity={0.12}>
+          <div style={{ display:"flex", alignItems:"baseline", gap:0, lineHeight:1 }}>
+            {letters.map((ch, i) => {
+              const delay = i * 2;
+              const sp = spr(frame, fps, delay, 200, 12);
+              const op = mv(frame, [delay, delay+10], [0,1]);
+              return (
+                <span key={i} style={{
+                  fontFamily: HEAD,
+                  fontSize: ch === " " ? 24 : 128,
                   fontWeight: 800,
-                  color: C.white,
-                  letterSpacing: "-1px",
-                  lineHeight: 1,
-                }}
-              >
-                F1
-              </div>
-            </div>
-
-            <div
-              style={{
-                opacity: coreOpacity,
-                transform: `translateY(${coreY}px)`,
-                fontFamily: FONT_HEAD,
-                fontSize: 56,
-                fontWeight: 800,
-                color: C.red,
-                letterSpacing: "14px",
-                textTransform: "uppercase",
-                lineHeight: 1,
-                marginTop: 2,
-              }}
-            >
-              CORE
-            </div>
+                  color: ch === "1" ? C.red : C.white,
+                  letterSpacing: ch === " " ? "0px" : "-2px",
+                  transform: `translateY(${(1-sp)*40}px) scale(${0.7+sp*0.3})`,
+                  display:"inline-block",
+                  opacity: op,
+                  textShadow: ch === "1" ? `0 0 60px ${C.red}88` : "none",
+                }}>
+                  {ch}
+                </span>
+              );
+            })}
           </div>
         </Trail>
 
-        {/* Red sweep line */}
-        <div style={{ width: 320, marginTop: 16, marginBottom: 16 }}>
-          <RedSweep startFrame={18} width="100%" />
+        {/* Red sweep underline */}
+        <div style={{ position:"relative", width:520, height:3, marginTop:8 }}>
+          <Sweep frame={frame} startFrame={20} y={0} />
         </div>
 
         {/* Badge */}
-        <div
-          style={{
-            opacity: badgeOpacity,
-            background: `rgba(225,6,0,0.12)`,
-            border: `1px solid rgba(225,6,0,0.4)`,
-            borderRadius: 100,
-            padding: "5px 16px",
-            fontFamily: FONT_HEAD,
-            fontSize: 15,
-            fontWeight: 700,
-            color: C.red,
-            letterSpacing: "3px",
-            textTransform: "uppercase",
-          }}
-        >
+        <div style={{
+          marginTop:20,
+          opacity: mv(frame, [28, 44], [0, 1]),
+          transform: `translateY(${mv(frame, [28, 44], [10, 0])}px)`,
+          display:"flex", alignItems:"center", gap:8,
+          background:"rgba(225,6,0,0.1)",
+          border:`1px solid rgba(225,6,0,0.35)`,
+          borderRadius:100,
+          padding:"6px 18px",
+          fontFamily: HEAD,
+          fontSize:13, fontWeight:700, color:C.red,
+          letterSpacing:"3px", textTransform:"uppercase",
+        }}>
+          <div style={{ width:5, height:5, borderRadius:"50%", background:C.red, boxShadow:`0 0 6px ${C.red}` }} />
           TELEMETRY PLATFORM
         </div>
 
         {/* Tagline */}
-        <div
-          style={{
-            opacity: tagOpacity,
-            transform: `translateY(${tagY}px)`,
-            marginTop: 18,
-            fontFamily: FONT_BODY,
-            fontSize: 17,
-            fontWeight: 400,
-            color: "rgba(240,240,245,0.55)",
-            letterSpacing: "0.5px",
-          }}
-        >
+        <div style={{
+          marginTop:16, opacity:tagOp, transform:`translateY(${tagY}px)`,
+          fontFamily:BODY, fontSize:19, fontWeight:400,
+          color:"rgba(242,242,247,0.45)", letterSpacing:"0.3px",
+        }}>
           Real F1 data. Every lap. Every driver.
         </div>
-      </div>
 
-      {/* Bottom corner accent lines */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 60,
-          left: 0,
-          right: 0,
-          height: 1,
-          background: `linear-gradient(90deg, transparent 0%, rgba(225,6,0,0.3) 50%, transparent 100%)`,
-          opacity: lerp(frame, [40, 60], [0, 1]),
-        }}
-      />
+        {/* Typing URL */}
+        <div style={{
+          marginTop:12,
+          fontFamily:MONO, fontSize:14, color:"rgba(225,6,0,0.6)",
+          letterSpacing:"2px",
+          opacity: mv(frame, [58, 70], [0, 1]),
+        }}>
+          {urlVisible}<span style={{ opacity: frame % 20 < 10 ? 1 : 0, color:C.red }}>_</span>
+        </div>
+      </div>
     </AbsoluteFill>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE 2a — Driver Selector Card (frames 120–198 ≈ 2–3.3s)
+// SCENE 2a — NOR Driver Splash 120–198 (1.3s)
+// Full-color McLaren flood, massive number
 // ═══════════════════════════════════════════════════════════════════════════
-function Scene2aDriverCard() {
+function Scene2aDriver() {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
 
-  const cardY = 60 * (1 - spr(frame, fps, 0));
-  const cardOpacity = lerp(frame, [0, 12], [0, 1]);
+  const flood = mv(frame, [0, 18], [0, 1]);
+  const numScale = spr(frame, fps, 4, 250, 11);
+  const infoOp = mv(frame, [12, 28], [0, 1]);
+  const infoX = mv(frame, [12, 28], [-30, 0]);
 
-  // Orange shimmer pulse
-  const shimmer = Math.sin((frame / 60) * Math.PI * 2) * 0.5 + 0.5;
+  // Pulsing glow
+  const pulse = Math.sin((frame / 20) * Math.PI) * 0.5 + 0.5;
 
-  const drivers = [
-    { num: "4", code: "NOR", name: "Lando Norris", team: "McLaren", color: C.mclaren, active: true },
-    { num: "16", code: "LEC", name: "Charles Leclerc", team: "Ferrari", color: C.ferrari, active: false },
-    { num: "44", code: "HAM", name: "Lewis Hamilton", team: "Mercedes", color: C.mercedes, active: false },
+  return (
+    <AbsoluteFill style={{ background: C.black, overflow:"hidden" }}>
+      <Grain />
+
+      {/* McLaren orange flood — diagonal slice */}
+      <div style={{
+        position:"absolute", inset:0,
+        background:`linear-gradient(115deg, rgba(255,128,0,0.22) 0%, rgba(255,128,0,0.06) 45%, transparent 65%)`,
+        opacity: flood,
+      }} />
+
+      {/* Diagonal accent stripe */}
+      <div style={{
+        position:"absolute",
+        top:-200, left:-80,
+        width:400, height:2000,
+        background:`linear-gradient(180deg, transparent 0%, rgba(255,128,0,0.12) 30%, rgba(255,128,0,0.18) 50%, transparent 100%)`,
+        transform:"rotate(-18deg)",
+        opacity: flood,
+      }} />
+
+      {/* Huge background number watermark */}
+      <div style={{
+        position:"absolute",
+        top:"50%", right:-20,
+        transform:`translateY(-50%) scale(${0.5 + numScale*0.5})`,
+        fontFamily:HEAD, fontSize:600, fontWeight:800,
+        color:`rgba(255,128,0,${0.04 + pulse * 0.03})`,
+        lineHeight:1, userSelect:"none",
+        opacity: flood,
+      }}>
+        4
+      </div>
+
+      {/* Main content */}
+      <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", justifyContent:"center", padding:"0 80px" }}>
+
+        {/* Session context */}
+        <div style={{ opacity: infoOp, transform:`translateX(${infoX}px)`, marginBottom:20 }}>
+          <div style={{
+            display:"inline-flex", alignItems:"center", gap:8,
+            background:"rgba(255,128,0,0.1)", border:`1px solid rgba(255,128,0,0.3)`,
+            borderRadius:100, padding:"5px 14px",
+            fontFamily:BODY, fontSize:11, fontWeight:600, color:C.mclaren,
+            letterSpacing:"1px", textTransform:"uppercase",
+          }}>
+            <div style={{ width:6, height:6, borderRadius:"50%", background:C.mclaren, boxShadow:`0 0 8px ${C.mclaren}` }} />
+            McLaren · Bahrain GP 2025 · Race
+          </div>
+        </div>
+
+        {/* Driver number — slams in */}
+        <div style={{
+          fontFamily:HEAD, fontSize:220, fontWeight:800,
+          color:C.mclaren, lineHeight:0.9, letterSpacing:"-6px",
+          transform:`translateY(${(1-numScale)*60}px) scale(${0.6+numScale*0.4})`,
+          textShadow:`0 0 80px rgba(255,128,0,${0.3+pulse*0.2}), 0 0 160px rgba(255,128,0,0.1)`,
+        }}>
+          4
+        </div>
+
+        {/* Driver name */}
+        <div style={{ opacity:infoOp, transform:`translateX(${infoX}px)`, marginTop:8 }}>
+          <div style={{
+            fontFamily:HEAD, fontSize:66, fontWeight:800,
+            color:C.white, letterSpacing:"-0.5px", lineHeight:1,
+            textTransform:"uppercase",
+          }}>
+            LANDO
+          </div>
+          <div style={{
+            fontFamily:HEAD, fontSize:66, fontWeight:800,
+            color:"rgba(255,255,255,0.35)", letterSpacing:"-0.5px", lineHeight:1,
+            textTransform:"uppercase",
+          }}>
+            NORRIS
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div style={{
+          display:"flex", gap:32, marginTop:28,
+          opacity: mv(frame, [18, 34], [0, 1]),
+          transform:`translateY(${mv(frame, [18,34], [10, 0])}px)`,
+        }}>
+          {[
+            { label:"CHAMPIONSHIP", value:"P1" },
+            { label:"POINTS", value:"87" },
+            { label:"WINS", value:"3" },
+          ].map(s => (
+            <div key={s.label}>
+              <div style={{ fontFamily:HEAD, fontSize:38, fontWeight:800, color:C.mclaren, lineHeight:1 }}>{s.value}</div>
+              <div style={{ fontFamily:BODY, fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"1.5px", textTransform:"uppercase", marginTop:3 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom accent line */}
+      <div style={{
+        position:"absolute", bottom:0, left:0, right:0, height:3,
+        background:`linear-gradient(90deg, ${C.mclaren} 0%, rgba(255,128,0,0.3) 60%, transparent 100%)`,
+        opacity: flood,
+      }} />
+
+      <HUDCorners frame={frame} startFrame={8} color={C.mclaren} size={28} gap={28} />
+    </AbsoluteFill>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCENE 2b — Track Map 198–276 (1.3s)
+// ═══════════════════════════════════════════════════════════════════════════
+function Scene2bTrack() {
+  const frame = useCurrentFrame();
+  const { fps, width, height } = useVideoConfig();
+
+  const W = 700, H = 700;
+
+  const trackPts: [number,number][] = [
+    [0.50,0.13],[0.63,0.10],[0.76,0.16],[0.83,0.27],
+    [0.81,0.40],[0.73,0.49],[0.69,0.57],[0.74,0.65],
+    [0.80,0.72],[0.76,0.81],[0.64,0.86],[0.51,0.86],
+    [0.38,0.81],[0.29,0.73],[0.25,0.62],[0.20,0.53],
+    [0.17,0.43],[0.21,0.34],[0.27,0.26],[0.37,0.18],[0.50,0.13],
+  ];
+
+  const pathD = trackPts.map(([x,y],i) => `${i===0?"M":"L"} ${x*W} ${y*H}`).join(" ") + " Z";
+
+  // Car progress
+  const prog = mv(frame, [0, 78], [0, 1]);
+  const idx = Math.min(Math.floor(prog * (trackPts.length-1)), trackPts.length-2);
+  const frac = (prog * (trackPts.length-1)) % 1;
+  const [ax,ay] = trackPts[idx];
+  const [bx,by] = trackPts[idx+1];
+  const carX = (ax + (bx-ax)*frac)*W;
+  const carY = (ay + (by-ay)*frac)*H;
+
+  // Heat colors
+  const heatColors = ["#3671C6","#3671C6","#00C853","#00C853",C.mclaren,C.mclaren,C.red,C.red,C.mclaren,"#00C853","#3671C6","#3671C6","#00C853",C.mclaren,C.red,C.red,"#00C853","#3671C6","#3671C6","#3671C6"];
+
+  const cardOp = mv(frame, [0, 10], [0, 1]);
+  const cardScale = spr(frame, fps, 0, 120, 14);
+
+  // Sector labels
+  const sectors = [
+    { pos: [0.75, 0.35], label:"S1" },
+    { pos: [0.6, 0.72], label:"S2" },
+    { pos: [0.24, 0.52], label:"S3" },
   ];
 
   return (
-    <AbsoluteFill style={{ background: C.black, alignItems: "center", justifyContent: "center" }}>
+    <AbsoluteFill style={{ background:C.black, alignItems:"center", justifyContent:"center", opacity:cardOp }}>
       <Grain />
+      <Scanlines />
 
-      {/* Scan-line grid */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px)`,
-          pointerEvents: "none",
-        }}
-      />
+      {/* BG glow */}
+      <div style={{
+        position:"absolute", width:800, height:800, borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(54,113,198,0.08) 0%, transparent 65%)",
+        top:"50%", left:"50%", transform:"translate(-50%,-50%)",
+      }} />
 
-      <div
-        style={{
-          opacity: cardOpacity,
-          transform: `translateY(${cardY}px)`,
-          width: 640,
-          background: C.panel,
-          border: `1px solid rgba(255,255,255,0.08)`,
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: `0 0 0 1px rgba(225,6,0,0.2), 0 32px 80px rgba(0,0,0,0.8)`,
-        }}
-      >
+      <div style={{
+        transform:`scale(${0.82+cardScale*0.18})`,
+        background:C.panel,
+        border:`1px solid ${C.border}`,
+        borderRadius:24,
+        overflow:"hidden",
+        boxShadow:`0 0 0 1px rgba(225,6,0,0.12), 0 40px 100px rgba(0,0,0,0.9)`,
+        width:760,
+      }}>
         {/* Header */}
-        <div
-          style={{
-            padding: "16px 24px",
-            borderBottom: `1px solid ${C.border}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.red }} />
-          <span style={{ fontFamily: FONT_HEAD, fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "2px", textTransform: "uppercase" }}>
-            PRIMARY DRIVER
-          </span>
-        </div>
-
-        {/* Driver list */}
-        <div style={{ padding: "12px 0" }}>
-          {drivers.map((d, i) => {
-            const rowOpacity = lerp(frame, [i * 6, i * 6 + 12], [0, 1]);
-            const rowX = lerp(frame, [i * 6, i * 6 + 14], [-20, 0]);
-            const isActive = d.active;
-
-            return (
-              <div
-                key={d.code}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  padding: "14px 24px",
-                  background: isActive
-                    ? `linear-gradient(90deg, rgba(${d.color === C.mclaren ? "255,128,0" : "0,0,0"},0.12) 0%, transparent 100%)`
-                    : "transparent",
-                  borderLeft: isActive ? `3px solid ${d.color}` : "3px solid transparent",
-                  opacity: rowOpacity,
-                  transform: `translateX(${rowX}px)`,
-                }}
-              >
-                {/* Number */}
-                <div
-                  style={{
-                    fontFamily: FONT_HEAD,
-                    fontSize: 32,
-                    fontWeight: 800,
-                    color: isActive ? d.color : "rgba(255,255,255,0.2)",
-                    width: 48,
-                    lineHeight: 1,
-                  }}
-                >
-                  {d.num}
-                </div>
-
-                {/* Code + Name */}
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: FONT_HEAD,
-                      fontSize: 22,
-                      fontWeight: 800,
-                      color: isActive ? C.white : "rgba(255,255,255,0.4)",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    {d.code}
-                  </div>
-                  <div style={{ fontFamily: FONT_BODY, fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>
-                    {d.name}
-                  </div>
-                </div>
-
-                {/* Team badge */}
-                <div
-                  style={{
-                    fontFamily: FONT_BODY,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: isActive ? d.color : "rgba(255,255,255,0.2)",
-                    background: isActive ? `rgba(${d.color === C.mclaren ? "255,128,0" : d.color === C.ferrari ? "249,21,54" : "108,211,191"},0.1)` : "transparent",
-                    padding: "3px 10px",
-                    borderRadius: 100,
-                    border: `1px solid ${isActive ? d.color + "40" : "transparent"}`,
-                  }}
-                >
-                  {d.team}
-                </div>
-
-                {/* Active indicator */}
-                {isActive && (
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: d.color,
-                      boxShadow: `0 0 ${8 + shimmer * 8}px ${d.color}`,
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* McLaren orange glow at bottom */}
-        <div
-          style={{
-            height: 2,
-            background: `linear-gradient(90deg, transparent 0%, ${C.mclaren} 50%, transparent 100%)`,
-            opacity: 0.4 + shimmer * 0.4,
-          }}
-        />
-      </div>
-
-      {/* Corner label */}
-      <div
-        style={{
-          position: "absolute",
-          top: 60,
-          left: 60,
-          fontFamily: FONT_HEAD,
-          fontSize: 11,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.2)",
-          letterSpacing: "3px",
-          textTransform: "uppercase",
-          opacity: lerp(frame, [5, 20], [0, 1]),
-        }}
-      >
-        SESSION: BAHRAIN GP · RACE · 2025
-      </div>
-    </AbsoluteFill>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SCENE 2b — Track Map (frames 198–276 ≈ 3.3–4.6s)
-// ═══════════════════════════════════════════════════════════════════════════
-function Scene2bTrackMap() {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const sceneOpacity = lerp(frame, [0, 10], [0, 1]);
-
-  // Bahrain simplified track path (normalized 0–1 SVG path)
-  const trackPoints = [
-    [0.5, 0.15], [0.62, 0.12], [0.75, 0.18], [0.82, 0.28],
-    [0.80, 0.42], [0.72, 0.50], [0.68, 0.58], [0.72, 0.66],
-    [0.78, 0.72], [0.75, 0.80], [0.64, 0.85], [0.52, 0.85],
-    [0.40, 0.80], [0.32, 0.72], [0.28, 0.62], [0.22, 0.55],
-    [0.18, 0.45], [0.22, 0.35], [0.28, 0.28], [0.36, 0.20],
-    [0.5, 0.15],
-  ] as [number, number][];
-
-  const W = 640;
-  const H = 640;
-
-  // Build SVG path
-  const pathD = trackPoints
-    .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x * W} ${y * H}`)
-    .join(" ") + " Z";
-
-  // Car position along track (0→1 over scene)
-  const progress = lerp(frame, [0, 78], [0, 1]);
-  const idx = Math.floor(progress * (trackPoints.length - 1));
-  const frac = (progress * (trackPoints.length - 1)) % 1;
-  const p0 = trackPoints[Math.min(idx, trackPoints.length - 1)];
-  const p1 = trackPoints[Math.min(idx + 1, trackPoints.length - 1)];
-  const carX = (p0[0] + (p1[0] - p0[0]) * frac) * W;
-  const carY = (p0[1] + (p1[1] - p0[1]) * frac) * H;
-
-  // Speed color for heatmap segments
-  const speedColors = ["#3671C6", "#3671C6", "#00E676", "#00E676", C.mclaren, C.mclaren, C.red, C.red, C.mclaren, "#00E676", "#3671C6", "#3671C6", "#00E676", C.mclaren, C.mclaren, C.red, C.red, "#00E676", "#3671C6", "#3671C6"];
-
-  const cardScale = spr(frame, fps, 0);
-
-  return (
-    <AbsoluteFill style={{ background: C.black, alignItems: "center", justifyContent: "center", opacity: sceneOpacity }}>
-      <Grain />
-
-      <div
-        style={{
-          transform: `scale(${0.88 + cardScale * 0.12})`,
-          width: 680,
-          background: C.panel,
-          border: `1px solid ${C.border}`,
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: `0 0 0 1px rgba(225,6,0,0.15), 0 32px 80px rgba(0,0,0,0.8)`,
-        }}
-      >
-        {/* Header */}
-        <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding:"16px 28px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <div style={{ fontFamily: FONT_HEAD, fontSize: 18, fontWeight: 800, color: C.white, letterSpacing: "0.5px" }}>BAHRAIN INTERNATIONAL CIRCUIT</div>
-            <div style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>Lap 1 · NOR vs LEC · Speed heatmap</div>
+            <div style={{ fontFamily:HEAD, fontSize:20, fontWeight:800, color:C.white, letterSpacing:"0.3px" }}>BAHRAIN INTERNATIONAL CIRCUIT</div>
+            <div style={{ fontFamily:BODY, fontSize:11, color:"rgba(255,255,255,0.28)", marginTop:3 }}>5.412 km · 57 laps · Lap 1 · Speed heatmap</div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {[["NOR", C.mclaren], ["LEC", C.ferrari]].map(([code, color]) => (
-              <div key={code} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: color as string }} />
-                <span style={{ fontFamily: FONT_BODY, fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{code}</span>
+          <div style={{ display:"flex", gap:14 }}>
+            {[[C.mclaren,"NOR"],[C.ferrari,"LEC"]].map(([c,n]) => (
+              <div key={n as string} style={{ display:"flex", alignItems:"center", gap:7 }}>
+                <div style={{ width:24, height:4, borderRadius:2, background:c as string }} />
+                <span style={{ fontFamily:BODY, fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>{n}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Track SVG */}
-        <div style={{ padding: "20px 24px", display: "flex", justifyContent: "center" }}>
-          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: "visible" }}>
-            {/* Track base */}
-            <path d={pathD} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={24} strokeLinecap="round" strokeLinejoin="round" />
+        <div style={{ padding:"8px 24px 16px", display:"flex", justifyContent:"center" }}>
+          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow:"visible" }}>
+            {/* Base track */}
+            <path d={pathD} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={28} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={pathD} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={18} strokeLinecap="round" strokeLinejoin="round" />
 
-            {/* Heatmap segments */}
-            {trackPoints.slice(0, -1).map(([x, y], i) => {
-              const [nx, ny] = trackPoints[i + 1];
-              const segProg = lerp(frame, [i * 3, i * 3 + 12], [0, 1]);
+            {/* Heat segments */}
+            {trackPts.slice(0,-1).map(([x,y],i) => {
+              const [nx,ny] = trackPts[i+1];
+              const segOp = mv(frame, [i*3, i*3+14], [0,1]);
+              const col = heatColors[i] || C.mclaren;
               return (
-                <line
-                  key={i}
-                  x1={x * W}
-                  y1={y * H}
-                  x2={nx * W}
-                  y2={ny * H}
-                  stroke={speedColors[i] || C.mclaren}
-                  strokeWidth={10}
-                  strokeLinecap="round"
-                  opacity={segProg * 0.85}
-                />
+                <g key={i}>
+                  {/* Glow */}
+                  <line x1={x*W} y1={y*H} x2={nx*W} y2={ny*H} stroke={col} strokeWidth={16} strokeLinecap="round" opacity={segOp * 0.25} />
+                  {/* Line */}
+                  <line x1={x*W} y1={y*H} x2={nx*W} y2={ny*H} stroke={col} strokeWidth={8} strokeLinecap="round" opacity={segOp * 0.9} />
+                </g>
               );
             })}
 
-            {/* Car dot */}
-            <circle cx={carX} cy={carY} r={7} fill={C.mclaren} />
-            <circle cx={carX} cy={carY} r={14} fill="none" stroke={C.mclaren} strokeWidth={2} opacity={0.4} />
-            <circle
-              cx={carX}
-              cy={carY}
-              r={22}
-              fill="none"
-              stroke={C.mclaren}
-              strokeWidth={1}
-              opacity={lerp(frame % 30, [0, 15, 30], [0.3, 0, 0.3])}
-            />
+            {/* Sector labels */}
+            {sectors.map((s) => (
+              <g key={s.label} opacity={mv(frame,[30,44],[0,1])}>
+                <circle cx={s.pos[0]*W} cy={s.pos[1]*H} r={16} fill="rgba(0,0,0,0.7)" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                <text x={s.pos[0]*W} y={s.pos[1]*H+5} textAnchor="middle" fontFamily={HEAD} fontSize={13} fontWeight={700} fill={C.white}>{s.label}</text>
+              </g>
+            ))}
+
+            {/* Car dot with trail */}
+            <circle cx={carX} cy={carY} r={10} fill={C.mclaren} />
+            <circle cx={carX} cy={carY} r={20} fill="none" stroke={C.mclaren} strokeWidth={2} opacity={0.5} />
+            <circle cx={carX} cy={carY} r={32} fill="none" stroke={C.mclaren} strokeWidth={1} opacity={mv(frame%24,[0,12,24],[0.4,0,0.4])} />
           </svg>
         </div>
 
         {/* Speed legend */}
-        <div style={{ padding: "0 24px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontFamily: FONT_BODY, fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "1px" }}>SPEED</span>
-          <div style={{ flex: 1, height: 4, borderRadius: 2, background: `linear-gradient(90deg, #3671C6 0%, #00E676 40%, ${C.mclaren} 70%, ${C.red} 100%)` }} />
-          <span style={{ fontFamily: FONT_BODY, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>MAX</span>
+        <div style={{ padding:"0 28px 16px", display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontFamily:BODY, fontSize:9, color:"rgba(255,255,255,0.25)", letterSpacing:"2px", textTransform:"uppercase" }}>LOW</span>
+          <div style={{ flex:1, height:5, borderRadius:3, background:`linear-gradient(90deg, ${C.redbull} 0%, #00C853 35%, ${C.mclaren} 65%, ${C.red} 100%)` }} />
+          <span style={{ fontFamily:BODY, fontSize:9, color:"rgba(255,255,255,0.25)", letterSpacing:"2px", textTransform:"uppercase" }}>TOP SPEED</span>
         </div>
       </div>
 
-      {/* Corner label */}
-      <div style={{ position: "absolute", top: 60, right: 60, fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "3px", textTransform: "uppercase" }}>
-        INTERACTIVE TRACK MAP
-      </div>
+      <HUDCorners frame={frame} startFrame={6} color="rgba(255,255,255,0.15)" size={24} gap={24} />
     </AbsoluteFill>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE 2c — Speed Chart (frames 276–360 ≈ 4.6–6s)
+// SCENE 2c — Speed Chart 276–360 (1.4s)
+// Two lines draw on fast, bold delta callout
 // ═══════════════════════════════════════════════════════════════════════════
-function Scene2cSpeedChart() {
+function Scene2cChart() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const sceneOpacity = lerp(frame, [0, 10], [0, 1]);
-  const drawProgress = lerp(frame, [8, 72], [0, 1]);
-  const calloutOpacity = lerp(frame, [55, 72], [0, 1]);
-  const calloutY = lerp(frame, [55, 72], [8, 0]);
+  const W = 660, H = 200;
+  const drawProg = mv(frame, [6, 66], [0, 1]);
+  const calloutOp = mv(frame, [55, 72], [0, 1]);
+  const calloutY = mv(frame, [55, 72], [8, 0]);
 
-  const W = 620;
-  const H = 240;
+  const norris = [0.42,0.50,0.66,0.81,0.96,0.90,0.74,0.57,0.48,0.60,0.77,0.92,0.97,0.84,0.69,0.55,0.47,0.63,0.79,0.93,0.86,0.70,0.58,0.53,0.68,0.84,0.93,0.77,0.62,0.50,0.45,0.53,0.69,0.85,0.94];
+  const leclerc = [0.40,0.48,0.63,0.78,0.93,0.87,0.71,0.54,0.46,0.58,0.74,0.89,0.94,0.81,0.67,0.53,0.45,0.60,0.76,0.90,0.83,0.68,0.56,0.51,0.65,0.81,0.90,0.74,0.59,0.48,0.43,0.51,0.67,0.83,0.91];
 
-  // Mock speed data (normalized 0–1)
-  const norrisData = [0.45, 0.52, 0.68, 0.82, 0.95, 0.88, 0.72, 0.55, 0.48, 0.62, 0.78, 0.91, 0.96, 0.85, 0.70, 0.58, 0.50, 0.65, 0.80, 0.93, 0.87, 0.72, 0.60, 0.55, 0.70, 0.85, 0.92, 0.78, 0.62, 0.52];
-  const leclercData = [0.43, 0.50, 0.65, 0.79, 0.92, 0.85, 0.69, 0.53, 0.46, 0.60, 0.75, 0.88, 0.94, 0.82, 0.68, 0.55, 0.48, 0.62, 0.77, 0.90, 0.84, 0.70, 0.57, 0.52, 0.67, 0.82, 0.89, 0.75, 0.60, 0.50];
-
-  function buildPath(data: number[], progress: number) {
-    const pts = data.slice(0, Math.max(2, Math.floor(data.length * progress)));
-    return pts.map((v, i) => {
-      const x = (i / (data.length - 1)) * W;
-      const y = H - v * (H - 20) - 10;
-      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+  function buildPath(data: number[], prog: number): string {
+    const pts = data.slice(0, Math.max(2, Math.floor(data.length * prog)));
+    return pts.map((v,i) => {
+      const x = (i/(data.length-1))*W;
+      const y = H - v*(H-16) - 8;
+      return `${i===0?"M":"L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
     }).join(" ");
   }
 
-  const cardScale = spr(frame, fps, 0);
+  const cardOp = mv(frame, [0, 8], [0, 1]);
+  const cardScale = spr(frame, fps, 0, 120, 14);
 
   return (
-    <AbsoluteFill style={{ background: C.black, alignItems: "center", justifyContent: "center", opacity: sceneOpacity }}>
+    <AbsoluteFill style={{ background:C.black, alignItems:"center", justifyContent:"center", opacity:cardOp }}>
       <Grain />
+      <Scanlines />
 
-      <div
-        style={{
-          transform: `scale(${0.88 + cardScale * 0.12})`,
-          width: 700,
-          background: C.panel,
-          border: `1px solid ${C.border}`,
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: `0 0 0 1px rgba(225,6,0,0.15), 0 32px 80px rgba(0,0,0,0.8)`,
-        }}
-      >
+      <div style={{
+        transform:`scale(${0.82+cardScale*0.18})`,
+        width:760,
+        background:C.panel,
+        border:`1px solid ${C.border}`,
+        borderRadius:24,
+        overflow:"hidden",
+        boxShadow:`0 0 0 1px rgba(225,6,0,0.12), 0 40px 100px rgba(0,0,0,0.9)`,
+      }}>
         {/* Header */}
-        <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontFamily: FONT_HEAD, fontSize: 18, fontWeight: 800, color: C.white }}>SPEED vs DISTANCE</div>
-          <div style={{ display: "flex", gap: 16 }}>
-            {[["NOR", C.mclaren], ["LEC", C.ferrari]].map(([code, color]) => (
-              <div key={code} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 20, height: 3, borderRadius: 2, background: color as string }} />
-                <span style={{ fontFamily: FONT_BODY, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{code}</span>
-              </div>
-            ))}
+        <div style={{ padding:"16px 28px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <div style={{ fontFamily:HEAD, fontSize:20, fontWeight:800, color:C.white }}>SPEED TRACE</div>
+            <div style={{ fontFamily:BODY, fontSize:11, color:"rgba(255,255,255,0.28)", marginTop:3 }}>Bahrain GP · Lap 1 · km/h vs distance</div>
+          </div>
+          <div style={{
+            fontFamily:HEAD, fontSize:15, fontWeight:700, color:C.mclaren,
+            background:"rgba(255,128,0,0.1)", border:`1px solid rgba(255,128,0,0.3)`,
+            padding:"5px 14px", borderRadius:100,
+          }}>
+            NOR FASTER IN S1 + S2
           </div>
         </div>
 
-        {/* Chart area */}
-        <div style={{ padding: "20px 24px", position: "relative" }}>
-          {/* Y-axis labels */}
-          <div style={{ position: "absolute", left: 8, top: 20, bottom: 20, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            {["320", "240", "160", "80"].map(v => (
-              <span key={v} style={{ fontFamily: FONT_BODY, fontSize: 9, color: "rgba(255,255,255,0.2)" }}>{v}</span>
+        {/* Y-axis + chart */}
+        <div style={{ padding:"16px 28px 8px", display:"flex", gap:12 }}>
+          {/* Y labels */}
+          <div style={{ display:"flex", flexDirection:"column", justifyContent:"space-between", height:H, paddingBottom:6 }}>
+            {["320","280","240","200","160"].map(v => (
+              <span key={v} style={{ fontFamily:MONO, fontSize:9, color:"rgba(255,255,255,0.2)", lineHeight:1 }}>{v}</span>
             ))}
           </div>
 
-          {/* Grid */}
-          <svg width={W} height={H} style={{ overflow: "visible" }}>
-            {/* Grid lines */}
-            {[0.25, 0.5, 0.75].map(y => (
-              <line
-                key={y}
-                x1={0} y1={H * y}
-                x2={W} y2={H * y}
-                stroke="rgba(255,255,255,0.04)"
-                strokeWidth={1}
-              />
-            ))}
-            {[0.25, 0.5, 0.75].map(x => (
-              <line
-                key={x}
-                x1={W * x} y1={0}
-                x2={W * x} y2={H}
-                stroke="rgba(255,255,255,0.04)"
-                strokeWidth={1}
-              />
+          <svg width={W} height={H} style={{ overflow:"visible", flex:1 }}>
+            {/* Grid */}
+            {[0.2,0.4,0.6,0.8].map(y => (
+              <line key={y} x1={0} y1={H*y} x2={W} y2={H*y} stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
             ))}
 
-            {/* Leclerc line */}
-            <path
-              d={buildPath(leclercData, drawProgress)}
-              fill="none"
-              stroke={C.ferrari}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.7}
-            />
+            {/* Leclerc with area fill */}
+            <path d={buildPath(leclerc, drawProg) + ` L ${W} ${H} L 0 ${H} Z`}
+              fill={C.ferrari} opacity={0.04} />
+            <path d={buildPath(leclerc, drawProg)} fill="none" stroke={C.ferrari} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.65} />
 
-            {/* Norris line */}
-            <path
-              d={buildPath(norrisData, drawProgress)}
-              fill="none"
-              stroke={C.mclaren}
-              strokeWidth={3}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            {/* Norris with area fill */}
+            <path d={buildPath(norris, drawProg) + ` L ${W} ${H} L 0 ${H} Z`}
+              fill={C.mclaren} opacity={0.06} />
+            <path d={buildPath(norris, drawProg)} fill="none" stroke={C.mclaren} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+            {/* Glow line */}
+            <path d={buildPath(norris, drawProg)} fill="none" stroke={C.mclaren} strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" opacity={0.12} />
 
-            {/* Glow under Norris line */}
-            <path
-              d={buildPath(norrisData, drawProgress)}
-              fill="none"
-              stroke={C.mclaren}
-              strokeWidth={8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.12}
-            />
-
-            {/* Sector 2 callout at ~65% x */}
-            {calloutOpacity > 0.01 && (
-              <g opacity={calloutOpacity} transform={`translate(0, ${calloutY})`}>
-                <line x1={W * 0.64} y1={0} x2={W * 0.64} y2={H} stroke="rgba(255,255,255,0.15)" strokeWidth={1} strokeDasharray="4 3" />
-                <rect x={W * 0.64 - 52} y={8} width={104} height={28} rx={6} fill="rgba(255,128,0,0.15)" stroke={C.mclaren} strokeWidth={1} />
-                <text x={W * 0.64} y={27} textAnchor="middle" fontFamily={FONT_HEAD} fontSize={12} fontWeight={700} fill={C.mclaren}>
-                  NOR +0.3s in S2
+            {/* Delta callout at S2 */}
+            {calloutOp > 0.01 && (
+              <g transform={`translate(0, ${calloutY})`} opacity={calloutOp}>
+                <line x1={W*0.62} y1={0} x2={W*0.62} y2={H} stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="5 3" />
+                <rect x={W*0.62-64} y={10} width={128} height={32} rx={6}
+                  fill="rgba(255,128,0,0.15)" stroke={C.mclaren} strokeWidth={1.5} />
+                <text x={W*0.62} y={31} textAnchor="middle"
+                  fontFamily={HEAD} fontSize={14} fontWeight={800} fill={C.mclaren}>
+                  NOR +0.31s IN S2
                 </text>
               </g>
             )}
           </svg>
+        </div>
 
-          {/* X-axis */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-            {["0", "1km", "2km", "3km", "4km", "5.41km"].map(v => (
-              <span key={v} style={{ fontFamily: FONT_BODY, fontSize: 9, color: "rgba(255,255,255,0.2)" }}>{v}</span>
-            ))}
+        {/* X axis */}
+        <div style={{ padding:"0 28px 16px", paddingLeft:68, display:"flex", justifyContent:"space-between" }}>
+          {["0","1km","2km","3km","4km","5.4km"].map(v => (
+            <span key={v} style={{ fontFamily:MONO, fontSize:9, color:"rgba(255,255,255,0.2)" }}>{v}</span>
+          ))}
+        </div>
+
+        {/* Legend */}
+        <div style={{ padding:"8px 28px 16px", borderTop:`1px solid ${C.border}`, display:"flex", gap:24, alignItems:"center" }}>
+          {[[C.mclaren,"NOR · 1:30.558"],[C.ferrari,"LEC · 1:30.889"]].map(([c,t]) => (
+            <div key={t as string} style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ width:28, height:3, borderRadius:2, background:c as string }} />
+              <span style={{ fontFamily:BODY, fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.45)" }}>{t}</span>
+            </div>
+          ))}
+          <div style={{
+            marginLeft:"auto",
+            fontFamily:HEAD, fontSize:22, fontWeight:800,
+            color:"rgba(255,255,255,0.08)",
+          }}>
+            Δ 0.331s
           </div>
         </div>
       </div>
 
-      <div style={{ position: "absolute", top: 60, left: 60, fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "3px", textTransform: "uppercase" }}>
-        LAP TELEMETRY · SECTOR ANALYSIS
-      </div>
+      <HUDCorners frame={frame} startFrame={6} color="rgba(255,255,255,0.12)" size={24} gap={24} />
     </AbsoluteFill>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE 3 — My Garage (frames 360–600 ≈ 6–10s)
+// SCENE 3 — My Garage 360–600 (4s)
 // ═══════════════════════════════════════════════════════════════════════════
 function Scene3Garage() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const panelSlide = lerp(frame, [0, 30], [-80, 0]);
-  const panelOpacity = lerp(frame, [0, 20], [0, 1]);
+  const slideIn = mv(frame, [0, 28], [-60, 0]);
+  const masterOp = mv(frame, [0, 18], [0, 1]);
+  const counter = Math.floor(mv(frame, [70, 155], [0, 87]));
+  const counterFlash = mv(frame, [70, 90, 155], [0, 1, 0]);
 
-  // Counter 0→87
-  const counter = Math.floor(lerp(frame, [80, 160], [0, 87]));
+  const pulse = Math.sin((frame/25)*Math.PI)*0.5+0.5;
 
-  // Results rows tick in
   const results = [
-    { race: "Bahrain GP", pos: "P1", pts: 25 },
-    { race: "Saudi Arabia GP", pos: "P1", pts: 25 },
-    { race: "Australia GP", pos: "P3", pts: 15 },
-    { race: "Japan GP", pos: "P2", pts: 18 },
-    { race: "China GP", pos: "P1", pts: 25 },
+    { race:"Bahrain GP", pos:"P1", pts:25, color:C.mclaren },
+    { race:"Saudi Arabia GP", pos:"P1", pts:25, color:C.mclaren },
+    { race:"Australia GP", pos:"P3", pts:15, color:"rgba(255,255,255,0.55)" },
+    { race:"Japan GP", pos:"P2", pts:18, color:"rgba(255,255,255,0.7)" },
+    { race:"China GP", pos:"P1", pts:25, color:C.mclaren },
   ];
 
-  // Points chart
-  const chartW = 520;
-  const chartH = 80;
-  const cumulativePoints = results.reduce((acc: number[], r, i) => {
-    acc.push((acc[i - 1] || 0) + r.pts);
-    return acc;
-  }, []);
-  const chartDraw = lerp(frame, [100, 175], [0, 1]);
-
-  const shimmer = Math.sin((frame / 40) * Math.PI) * 0.5 + 0.5;
+  const cumPts = results.reduce((acc:number[],r,i) => { acc.push((acc[i-1]||0)+r.pts); return acc; }, []);
+  const chartDraw = mv(frame, [90, 175], [0, 1]);
 
   return (
-    <AbsoluteFill style={{ background: C.black }}>
+    <AbsoluteFill style={{ background:C.black, opacity:masterOp }}>
       <Grain />
 
-      {/* Background glow */}
-      <div
-        style={{
-          position: "absolute",
-          top: "20%",
-          left: "10%",
-          width: 600,
-          height: 600,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, rgba(255,128,0,0.06) 0%, transparent 70%)`,
-          pointerEvents: "none",
-        }}
-      />
+      {/* Orange ambient */}
+      <div style={{
+        position:"absolute", top:"-20%", left:"-10%", width:"70%", height:"70%",
+        background:"radial-gradient(circle, rgba(255,128,0,0.07) 0%, transparent 60%)",
+        pointerEvents:"none",
+      }} />
 
-      {/* Content */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 24,
-          opacity: panelOpacity,
-          transform: `translateY(${panelSlide}px)`,
-        }}
-      >
-        {/* Section label */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, alignSelf: "flex-start", marginLeft: 120 }}>
-          <div style={{ width: 3, height: 20, background: C.mclaren, borderRadius: 2 }} />
-          <span style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "3px", textTransform: "uppercase" }}>
+      <div style={{
+        position:"absolute", inset:0,
+        display:"flex", flexDirection:"column",
+        alignItems:"center", justifyContent:"center",
+        gap:20,
+        transform:`translateY(${slideIn}px)`,
+      }}>
+
+        {/* Section badge */}
+        <div style={{ alignSelf:"flex-start", marginLeft:100, display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:3, height:22, background:C.mclaren, borderRadius:2 }} />
+          <span style={{ fontFamily:HEAD, fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.28)", letterSpacing:"3.5px", textTransform:"uppercase" }}>
             MY GARAGE
           </span>
         </div>
 
-        {/* Hero driver card */}
-        <div
-          style={{
-            width: 680,
-            background: `linear-gradient(135deg, rgba(255,128,0,0.1) 0%, ${C.panel} 60%)`,
-            border: `1px solid rgba(255,128,0,${0.2 + shimmer * 0.15})`,
-            borderRadius: 20,
-            padding: "24px 28px",
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            boxShadow: `0 0 40px rgba(255,128,0,${0.05 + shimmer * 0.08}), 0 24px 60px rgba(0,0,0,0.7)`,
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Shimmer sweep */}
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: `${-100 + shimmer * 300}%`,
-              width: "60%",
-              height: "100%",
-              background: "linear-gradient(90deg, transparent 0%, rgba(255,128,0,0.04) 50%, transparent 100%)",
-              pointerEvents: "none",
-            }}
-          />
+        {/* Hero driver banner */}
+        <div style={{
+          width:820,
+          background:`linear-gradient(120deg, rgba(255,128,0,0.16) 0%, rgba(255,128,0,0.04) 50%, ${C.panel} 100%)`,
+          border:`1px solid rgba(255,128,0,${0.25+pulse*0.12})`,
+          borderRadius:20,
+          padding:"28px 36px",
+          display:"flex", alignItems:"center", gap:32,
+          boxShadow:`0 0 60px rgba(255,128,0,${0.06+pulse*0.06}), 0 24px 70px rgba(0,0,0,0.8)`,
+          position:"relative", overflow:"hidden",
+        }}>
+          {/* Shimmer */}
+          <div style={{
+            position:"absolute", top:0, bottom:0,
+            width:"40%", left:`${-60+pulse*160}%`,
+            background:"linear-gradient(90deg, transparent, rgba(255,128,0,0.04), transparent)",
+            pointerEvents:"none",
+          }} />
 
-          {/* Number */}
-          <div style={{ fontFamily: FONT_HEAD, fontSize: 88, fontWeight: 800, color: C.mclaren, lineHeight: 1, opacity: 0.8 }}>
+          {/* Big number */}
+          <div style={{
+            fontFamily:HEAD, fontSize:140, fontWeight:800,
+            color:C.mclaren, lineHeight:1, opacity:0.9,
+            textShadow:`0 0 80px rgba(255,128,0,0.3)`,
+            flex:"0 0 auto",
+          }}>
             4
           </div>
 
           {/* Info */}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT_HEAD, fontSize: 32, fontWeight: 800, color: C.white, letterSpacing: "-0.5px" }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:HEAD, fontSize:46, fontWeight:800, color:C.white, letterSpacing:"-0.5px", lineHeight:1, textTransform:"uppercase" }}>
               LANDO NORRIS
             </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-              <div style={{ fontFamily: FONT_BODY, fontSize: 12, fontWeight: 600, color: C.mclaren, background: "rgba(255,128,0,0.12)", padding: "3px 10px", borderRadius: 100, border: `1px solid rgba(255,128,0,0.3)` }}>
-                McLaren
-              </div>
-              <div style={{ fontFamily: FONT_BODY, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.06)", padding: "3px 10px", borderRadius: 100 }}>
-                #4 · British
-              </div>
+            <div style={{ display:"flex", gap:10, marginTop:10 }}>
+              {["McLaren","British","5 Seasons"].map(t => (
+                <span key={t} style={{
+                  fontFamily:BODY, fontSize:11, fontWeight:600,
+                  color:"rgba(255,255,255,0.4)", background:"rgba(255,255,255,0.06)",
+                  padding:"3px 12px", borderRadius:100,
+                }}>{t}</span>
+              ))}
             </div>
           </div>
 
-          {/* Championship position */}
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: FONT_HEAD, fontSize: 64, fontWeight: 800, color: C.mclaren, lineHeight: 1 }}>P1</div>
-            <div style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>CHAMPIONSHIP</div>
+          {/* P1 badge */}
+          <div style={{ textAlign:"center", flex:"0 0 auto" }}>
+            <div style={{ fontFamily:HEAD, fontSize:88, fontWeight:800, color:C.mclaren, lineHeight:1,
+              textShadow:`0 0 40px rgba(255,128,0,0.5)` }}>
+              P1
+            </div>
+            <div style={{ fontFamily:BODY, fontSize:10, color:"rgba(255,255,255,0.25)", letterSpacing:"2px", marginTop:4 }}>
+              2025 CHAMPIONSHIP
+            </div>
           </div>
         </div>
 
-        {/* Results table + chart row */}
-        <div style={{ display: "flex", gap: 20, width: 680 }}>
-          {/* Results table */}
-          <div
-            style={{
-              flex: 1,
-              background: C.panel,
-              border: `1px solid ${C.border}`,
-              borderRadius: 16,
-              overflow: "hidden",
-            }}
-          >
-            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontFamily: FONT_HEAD, fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "2px", textTransform: "uppercase" }}>
-                2025 SEASON
-              </span>
+        {/* Bottom row: results + points */}
+        <div style={{ display:"flex", gap:20, width:820 }}>
+
+          {/* Results */}
+          <div style={{
+            flex:1, background:C.panel, border:`1px solid ${C.border}`,
+            borderRadius:16, overflow:"hidden",
+          }}>
+            <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between" }}>
+              <span style={{ fontFamily:HEAD, fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.28)", letterSpacing:"2px", textTransform:"uppercase" }}>2025 RESULTS</span>
+              <span style={{ fontFamily:HEAD, fontSize:12, fontWeight:700, color:C.mclaren }}>3 WINS</span>
             </div>
-            {results.map((r, i) => {
-              const rowOpacity = lerp(frame, [30 + i * 12, 30 + i * 12 + 14], [0, 1]);
-              const rowX = lerp(frame, [30 + i * 12, 30 + i * 12 + 16], [12, 0]);
-              const posColor = r.pos === "P1" ? C.mclaren : r.pos === "P2" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)";
+            {results.map((r,i) => {
+              const rowOp = mv(frame, [28+i*10, 28+i*10+14], [0,1]);
+              const rowX  = mv(frame, [28+i*10, 28+i*10+16], [16, 0]);
               return (
-                <div
-                  key={r.race}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "10px 16px",
-                    borderBottom: i < results.length - 1 ? `1px solid rgba(255,255,255,0.04)` : "none",
-                    opacity: rowOpacity,
-                    transform: `translateX(${rowX}px)`,
-                  }}
-                >
-                  <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)", flex: 1 }}>{r.race}</span>
-                  <span style={{ fontFamily: FONT_HEAD, fontSize: 16, fontWeight: 800, color: posColor, width: 36 }}>{r.pos}</span>
-                  <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: "rgba(255,255,255,0.3)", width: 40, textAlign: "right" }}>+{r.pts}</span>
+                <div key={r.race} style={{
+                  display:"flex", alignItems:"center",
+                  padding:"9px 20px",
+                  borderBottom: i<results.length-1 ? `1px solid rgba(255,255,255,0.03)` : "none",
+                  opacity:rowOp, transform:`translateX(${rowX}px)`,
+                  background: r.pos==="P1" ? "rgba(255,128,0,0.04)" : "transparent",
+                }}>
+                  <span style={{ fontFamily:HEAD, fontSize:22, fontWeight:800, color:r.color, width:52 }}>{r.pos}</span>
+                  <span style={{ fontFamily:BODY, fontSize:11, color:"rgba(255,255,255,0.35)", flex:1 }}>{r.race}</span>
+                  <span style={{ fontFamily:MONO, fontSize:11, color:"rgba(255,255,255,0.2)" }}>+{r.pts}pts</span>
                 </div>
               );
             })}
           </div>
 
-          {/* Points card */}
-          <div
-            style={{
-              width: 180,
-              background: C.panel,
-              border: `1px solid ${C.border}`,
-              borderRadius: 16,
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "2px", textTransform: "uppercase" }}>
-              POINTS
+          {/* Points */}
+          <div style={{
+            width:220, background:C.panel, border:`1px solid ${C.border}`,
+            borderRadius:16, padding:"20px", display:"flex", flexDirection:"column", justifyContent:"space-between",
+          }}>
+            <div style={{ fontFamily:HEAD, fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.28)", letterSpacing:"2px", textTransform:"uppercase" }}>
+              TOTAL POINTS
             </div>
-
-            {/* Counter */}
-            <div style={{ fontFamily: FONT_HEAD, fontSize: 52, fontWeight: 800, color: C.mclaren, lineHeight: 1 }}>
+            <div style={{
+              fontFamily:HEAD, fontSize:72, fontWeight:800, color:C.mclaren, lineHeight:1,
+              textShadow:`0 0 40px rgba(255,128,0,${counterFlash*0.5})`,
+            }}>
               {counter}
             </div>
-
-            {/* Mini chart */}
-            <svg width={148} height={chartH} style={{ overflow: "visible" }}>
-              {cumulativePoints.slice(0, Math.max(2, Math.floor(cumulativePoints.length * chartDraw))).map((pts, i) => {
-                const x = (i / (cumulativePoints.length - 1)) * 148;
-                const y = chartH - (pts / 108) * (chartH - 10) - 5;
-                if (i === 0) return null;
-                const prevPts = cumulativePoints[i - 1];
-                const prevX = ((i - 1) / (cumulativePoints.length - 1)) * 148;
-                const prevY = chartH - (prevPts / 108) * (chartH - 10) - 5;
+            <svg width={180} height={70} style={{ overflow:"visible" }}>
+              {cumPts.slice(0, Math.max(2, Math.floor(cumPts.length*chartDraw))).map((pts, i) => {
+                if (i===0) return null;
+                const px = ((i-1)/(cumPts.length-1))*180;
+                const py = 70 - (cumPts[i-1]/108)*60 - 5;
+                const cx = (i/(cumPts.length-1))*180;
+                const cy = 70 - (pts/108)*60 - 5;
                 return (
                   <g key={i}>
-                    <line x1={prevX} y1={prevY} x2={x} y2={y} stroke={C.mclaren} strokeWidth={2} strokeLinecap="round" />
-                    <circle cx={x} cy={y} r={3} fill={C.mclaren} />
+                    <line x1={px} y1={py} x2={cx} y2={cy} stroke={C.mclaren} strokeWidth={2} strokeLinecap="round" />
+                    <circle cx={cx} cy={cy} r={3.5} fill={C.mclaren} />
+                    <circle cx={cx} cy={cy} r={7} fill={C.mclaren} opacity={0.15} />
                   </g>
                 );
               })}
@@ -951,256 +810,207 @@ function Scene3Garage() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE 4 — News Feed (frames 600–780 ≈ 10–13s)
+// SCENE 4 — News Feed 600–780 (3s)
+// Broadcast lower-thirds style, staggered spring
 // ═══════════════════════════════════════════════════════════════════════════
 function Scene4News() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const articles = [
-    {
-      title: "Norris dominates Bahrain opener",
-      meta: "Race Weekend",
-      metaColor: C.mclaren,
-      sub: "McLaren's MCL39 showed superior straight-line speed in Sector 2",
-      delay: 0,
-    },
-    {
-      title: "Ferrari unveils aggressive Jeddah upgrade",
-      meta: "Technical",
-      metaColor: C.ferrari,
-      sub: "Floor revisions target downforce deficit vs McLaren and Red Bull",
-      delay: 5,
-    },
-    {
-      title: '"Best car I\'ve driven in years"',
-      meta: "Quote",
-      metaColor: C.mercedes,
-      sub: "Hamilton on Mercedes' resurgent 2025 challenger after FP3",
-      delay: 10,
-    },
+    { title:"Norris dominates Bahrain opener", sub:"McLaren's MCL39 showed superior S2 speed — gap grew each lap", badge:"RACE WEEKEND", color:C.mclaren, delay:0 },
+    { title:"Ferrari unveils aggressive Jeddah upgrade", sub:"Floor revisions target 0.4s downforce deficit vs McLaren", badge:"TECHNICAL", color:C.ferrari, delay:8 },
+    { title:'"Best car I\'ve driven in years"', sub:"Hamilton on Mercedes' resurgent W16 after dominant FP3", badge:"QUOTE", color:C.mercedes, delay:16 },
   ];
 
+  const headerOp = mv(frame, [0, 16], [0, 1]);
+
   return (
-    <AbsoluteFill style={{ background: C.black, alignItems: "center", justifyContent: "center" }}>
+    <AbsoluteFill style={{ background:C.black, alignItems:"center", justifyContent:"center" }}>
       <Grain />
+      <Scanlines opacity={0.04} />
 
-      {/* Subtle horizontal scan lines */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.008) 4px)`,
-          pointerEvents: "none",
-        }}
-      />
+      <div style={{ display:"flex", flexDirection:"column", gap:18, width:820 }}>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, width: 680 }}>
         {/* Section header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, opacity: lerp(frame, [0, 18], [0, 1]) }}>
-          <div style={{ width: 3, height: 20, background: C.red, borderRadius: 2 }} />
-          <span style={{ fontFamily: FONT_HEAD, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "3px", textTransform: "uppercase" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14, opacity:headerOp }}>
+          <div style={{ width:3, height:22, background:C.red, borderRadius:2 }} />
+          <span style={{ fontFamily:HEAD, fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.3)", letterSpacing:"3.5px", textTransform:"uppercase" }}>
             NEWS & INSIGHTS
           </span>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, rgba(255,255,255,0.08), transparent)` }} />
+          <div style={{ flex:1, height:1, background:"linear-gradient(90deg, rgba(255,255,255,0.08), transparent)" }} />
+          <span style={{ fontFamily:MONO, fontSize:10, color:"rgba(255,255,255,0.15)" }}>LIVE</span>
+          <div style={{
+            width:7, height:7, borderRadius:"50%", background:C.red,
+            boxShadow:`0 0 8px ${C.red}`,
+            opacity: frame%30 < 15 ? 1 : 0.3,
+          }} />
         </div>
 
-        {/* News cards */}
+        {/* Cards */}
         {articles.map((a, i) => {
-          const springVal = spr(frame, fps, a.delay);
-          const cardY = 40 * (1 - springVal);
-          const cardOpacity = Math.min(springVal * 2, 1);
+          const sp = spr(frame, fps, a.delay, 130, 13);
+          const cardY = 50*(1-sp);
+          const cardOp = Math.min(sp*2, 1);
 
           return (
-            <div
-              key={i}
-              style={{
-                opacity: cardOpacity,
-                transform: `translateY(${cardY}px)`,
-                background: C.panel,
-                border: `1px solid ${C.border}`,
-                borderRadius: 16,
-                padding: "20px 24px",
-                borderLeft: `3px solid ${a.metaColor}`,
-                boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.04)`,
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
-            >
-              {/* Meta badge */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div
-                  style={{
-                    fontFamily: FONT_BODY,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: a.metaColor,
-                    background: `${a.metaColor}18`,
-                    padding: "3px 10px",
-                    borderRadius: 100,
-                    border: `1px solid ${a.metaColor}35`,
-                    letterSpacing: "0.5px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {a.meta}
+            <div key={i} style={{
+              opacity:cardOp,
+              transform:`translateY(${cardY}px)`,
+              background:C.panel,
+              border:`1px solid ${C.border}`,
+              borderLeft:`3px solid ${a.color}`,
+              borderRadius:16,
+              padding:"22px 28px",
+              display:"flex", gap:22, alignItems:"center",
+              boxShadow:`0 8px 40px rgba(0,0,0,0.6), inset 0 0 0 0.5px rgba(255,255,255,0.03)`,
+              position:"relative", overflow:"hidden",
+            }}>
+              {/* Left color accent */}
+              <div style={{
+                position:"absolute", top:0, left:0, bottom:0, width:80,
+                background:`linear-gradient(90deg, ${a.color}0A, transparent)`,
+                pointerEvents:"none",
+              }} />
+
+              <div style={{ flex:1 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:9 }}>
+                  <span style={{
+                    fontFamily:BODY, fontSize:10, fontWeight:700,
+                    color:a.color,
+                    background:`${a.color}18`,
+                    padding:"3px 10px", borderRadius:100,
+                    border:`1px solid ${a.color}35`,
+                    letterSpacing:"0.8px", textTransform:"uppercase",
+                  }}>
+                    {a.badge}
+                  </span>
+                  <span style={{ fontFamily:BODY, fontSize:10, color:"rgba(255,255,255,0.18)" }}>
+                    {["2h ago","5h ago","1d ago"][i]}
+                  </span>
                 </div>
-                <div
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: "50%",
-                    background: "rgba(255,255,255,0.15)",
-                  }}
-                />
-                <span style={{ fontFamily: FONT_BODY, fontSize: 10, color: "rgba(255,255,255,0.2)" }}>
-                  {["2h ago", "5h ago", "1d ago"][i]}
-                </span>
+                <div style={{ fontFamily:HEAD, fontSize:24, fontWeight:800, color:C.white, lineHeight:1.15, letterSpacing:"-0.2px" }}>
+                  {a.title}
+                </div>
+                <div style={{ fontFamily:BODY, fontSize:12, color:"rgba(255,255,255,0.35)", marginTop:7, lineHeight:1.55 }}>
+                  {a.sub}
+                </div>
               </div>
 
-              {/* Title */}
-              <div
-                style={{
-                  fontFamily: FONT_HEAD,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: C.white,
-                  lineHeight: 1.2,
-                  letterSpacing: "-0.2px",
-                }}
-              >
-                {a.title}
-              </div>
-
-              {/* Sub */}
-              <div
-                style={{
-                  fontFamily: FONT_BODY,
-                  fontSize: 12,
-                  color: "rgba(255,255,255,0.35)",
-                  lineHeight: 1.5,
-                }}
-              >
-                {a.sub}
-              </div>
+              {/* Right arrow */}
+              <div style={{ color:`rgba(255,255,255,0.1)`, fontFamily:HEAD, fontSize:28, fontWeight:800 }}>→</div>
             </div>
           );
         })}
       </div>
+
+      <HUDCorners frame={frame} startFrame={10} color="rgba(255,255,255,0.08)" size={22} gap={30} />
     </AbsoluteFill>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE 5 — End Card (frames 780–900 ≈ 13–15s)
+// SCENE 5 — End Card 780–900 (2s)
 // ═══════════════════════════════════════════════════════════════════════════
-function Scene5EndCard() {
+function Scene5End() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const wordmarkOpacity = lerp(frame, [10, 35], [0, 1]);
-  const wordmarkScale = lerp(frame, [10, 35], [0.92, 1]);
-  const urlOpacity = lerp(frame, [30, 50], [0, 1]);
-  const urlY = lerp(frame, [30, 50], [6, 0]);
-  const glowOpacity = lerp(frame, [0, 40], [0, 0.7]);
+  const logoScale = spr(frame, fps, 5, 160, 12);
+  const urlOp = mv(frame, [28, 48], [0, 1]);
+  const tagOp = mv(frame, [42, 60], [0, 1]);
+  const glowOp = mv(frame, [0, 35], [0, 1]);
+  const pulse = Math.sin((frame/30)*Math.PI)*0.5+0.5;
+
+  // Spinning outer ring
+  const ringAngle = mv(frame, [0, 120], [0, 90]);
 
   return (
-    <AbsoluteFill style={{ background: C.black, alignItems: "center", justifyContent: "center" }}>
+    <AbsoluteFill style={{ background:C.black, alignItems:"center", justifyContent:"center" }}>
       <Grain />
+      <Scanlines />
 
-      {/* Radial glow */}
-      <div
-        style={{
-          position: "absolute",
-          width: 600,
-          height: 600,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, rgba(225,6,0,0.12) 0%, transparent 65%)`,
-          opacity: glowOpacity,
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }}
-      />
+      <Flash frame={frame} at={0} color={C.red} dur={6} />
 
-      {/* Corner accent lines */}
-      {[
-        { top: 40, left: 40, width: 60, height: 2 },
-        { top: 40, left: 40, width: 2, height: 60 },
-        { bottom: 40, right: 40, width: 60, height: 2 },
-        { bottom: 40, right: 40, width: 2, height: 60 },
-      ].map((style, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            background: `rgba(225,6,0,0.4)`,
-            opacity: lerp(frame, [20 + i * 4, 35 + i * 4], [0, 1]),
-            ...style,
-          }}
+      {/* Deep glow */}
+      <div style={{
+        position:"absolute", width:700, height:700, borderRadius:"50%",
+        background:`radial-gradient(circle, rgba(225,6,0,${0.14+pulse*0.06}) 0%, rgba(225,6,0,0.03) 45%, transparent 65%)`,
+        top:"50%", left:"50%", transform:"translate(-50%,-50%)",
+        opacity:glowOp,
+      }} />
+
+      {/* Rotating ring */}
+      <svg style={{ position:"absolute", width:"100%", height:"100%", top:0, left:0 }} opacity={glowOp*0.4}>
+        <circle cx="50%" cy="50%" r="380"
+          fill="none" stroke={C.red} strokeWidth="1"
+          strokeDasharray="60 300"
+          transform={`rotate(${ringAngle}, 540, 960)`}
+          opacity={0.3}
         />
-      ))}
+      </svg>
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <SpeedLines frame={frame} startFrame={0} count={16} color={C.red} />
+
+      {/* Corner HUD */}
+      <HUDCorners frame={frame} startFrame={14} color={C.red} size={40} gap={44} />
+
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+
         {/* Wordmark */}
-        <div
-          style={{
-            opacity: wordmarkOpacity,
-            transform: `scale(${wordmarkScale})`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 0,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: FONT_HEAD,
-              fontSize: 80,
-              fontWeight: 800,
-              color: C.white,
-              letterSpacing: "4px",
-              lineHeight: 1,
-            }}
-          >
-            F1 CORE
+        <Trail layers={3} lagInFrames={0.5} trailOpacity={0.1}>
+          <div style={{
+            transform:`scale(${0.6+logoScale*0.4})`,
+            opacity: Math.min(logoScale*2, 1),
+            display:"flex", flexDirection:"column", alignItems:"center",
+          }}>
+            <div style={{
+              fontFamily:HEAD, fontSize:100, fontWeight:800,
+              color:C.white, letterSpacing:"8px", lineHeight:1,
+              textTransform:"uppercase",
+            }}>
+              F1 CORE
+            </div>
           </div>
-        </div>
+        </Trail>
 
-        {/* Red sweep */}
-        <div style={{ width: 280, marginTop: 4, marginBottom: 10 }}>
-          <RedSweep startFrame={38} width="100%" />
+        {/* Sweep */}
+        <div style={{ position:"relative", width:440, height:3, marginTop:6 }}>
+          <Sweep frame={frame} startFrame={22} y={0} />
         </div>
 
         {/* URL */}
-        <div
-          style={{
-            opacity: urlOpacity,
-            transform: `translateY(${urlY}px)`,
-            fontFamily: "'Courier New', monospace",
-            fontSize: 18,
-            fontWeight: 400,
-            color: "rgba(240,240,245,0.45)",
-            letterSpacing: "3px",
-          }}
-        >
+        <div style={{
+          marginTop:18,
+          opacity:urlOp, transform:`translateY(${mv(frame,[28,48],[6,0])}px)`,
+          fontFamily:MONO, fontSize:20, color:"rgba(225,6,0,0.7)",
+          letterSpacing:"4px",
+        }}>
           thef1core.com
         </div>
 
         {/* Tagline */}
-        <div
-          style={{
-            opacity: lerp(frame, [45, 65], [0, 1]),
-            fontFamily: FONT_BODY,
-            fontSize: 13,
-            fontWeight: 400,
-            color: "rgba(255,255,255,0.2)",
-            marginTop: 8,
-            letterSpacing: "0.5px",
-          }}
-        >
-          Real telemetry. Every race. Built for fans.
+        <div style={{
+          marginTop:14, opacity:tagOp,
+          fontFamily:BODY, fontSize:14, color:"rgba(255,255,255,0.22)",
+          letterSpacing:"0.5px",
+        }}>
+          Real telemetry. Every race. Free.
+        </div>
+
+        {/* CTA pill */}
+        <div style={{
+          marginTop:22,
+          opacity: mv(frame, [58, 78], [0, 1]),
+          transform:`translateY(${mv(frame,[58,78],[10,0])}px)`,
+          background:C.red,
+          padding:"10px 32px",
+          borderRadius:100,
+          fontFamily:HEAD, fontSize:16, fontWeight:700,
+          color:C.white, letterSpacing:"2px", textTransform:"uppercase",
+          boxShadow:`0 0 30px rgba(225,6,0,${0.3+pulse*0.2})`,
+        }}>
+          EXPLORE FREE →
         </div>
       </div>
     </AbsoluteFill>
@@ -1208,166 +1018,117 @@ function Scene5EndCard() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ROOT COMPOSITION — 9:16 (1080×1920)
+// TRANSITIONS between scenes — flash + slice
+// ═══════════════════════════════════════════════════════════════════════════
+function FlashCut({ frame, at }: { frame:number; at:number }) {
+  return (
+    <>
+      <Flash frame={frame} at={at} color={C.white} dur={4} />
+      <Flash frame={frame} at={at+2} color={C.black} dur={3} />
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOT COMPOSITION
 // ═══════════════════════════════════════════════════════════════════════════
 export function F1CoreDemoComp() {
   const frame = useCurrentFrame();
 
   return (
-    <AbsoluteFill style={{ background: C.black }}>
-      {/* Google Fonts */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;600&display=swap');
-      `}</style>
+    <AbsoluteFill style={{ background:C.black }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;600&display=swap');`}</style>
 
-      {/* Scene 1: Cold Open — 0–120 */}
-      <Sequence from={0} durationInFrames={130}>
-        <Scene1ColdOpen />
+      {/* Scene 1 — Cold Open */}
+      <Sequence from={0} durationInFrames={125}>
+        <Scene1 />
       </Sequence>
 
-      {/* Wipe 1→2a */}
-      <Sequence from={115} durationInFrames={20}>
-        <SliceWipe triggerFrame={0} />
+      {/* Flash cut */}
+      <Sequence from={120} durationInFrames={10}>
+        <AbsoluteFill><FlashCut frame={frame} at={0} /></AbsoluteFill>
       </Sequence>
 
-      {/* Scene 2a: Driver Card — 120–198 */}
-      <Sequence from={120} durationInFrames={88}>
-        <Scene2aDriverCard />
+      {/* Scene 2a — NOR Driver */}
+      <Sequence from={122} durationInFrames={82}>
+        <Scene2aDriver />
       </Sequence>
 
-      {/* Wipe 2a→2b */}
-      <Sequence from={198} durationInFrames={20}>
-        <SliceWipe triggerFrame={0} />
+      <Sequence from={198} durationInFrames={10}>
+        <AbsoluteFill><FlashCut frame={frame} at={0} /></AbsoluteFill>
       </Sequence>
 
-      {/* Scene 2b: Track Map — 198–276 */}
-      <Sequence from={198} durationInFrames={88}>
-        <Scene2bTrackMap />
+      {/* Scene 2b — Track Map */}
+      <Sequence from={200} durationInFrames={82}>
+        <Scene2bTrack />
       </Sequence>
 
-      {/* Wipe 2b→2c */}
-      <Sequence from={276} durationInFrames={20}>
-        <SliceWipe triggerFrame={0} />
+      <Sequence from={276} durationInFrames={10}>
+        <AbsoluteFill><FlashCut frame={frame} at={0} /></AbsoluteFill>
       </Sequence>
 
-      {/* Scene 2c: Speed Chart — 276–360 */}
-      <Sequence from={276} durationInFrames={90}>
-        <Scene2cSpeedChart />
+      {/* Scene 2c — Chart */}
+      <Sequence from={278} durationInFrames={88}>
+        <Scene2cChart />
       </Sequence>
 
-      {/* Wipe 2c→3 */}
-      <Sequence from={354} durationInFrames={20}>
-        <SliceWipe triggerFrame={0} />
+      <Sequence from={360} durationInFrames={10}>
+        <AbsoluteFill><FlashCut frame={frame} at={0} /></AbsoluteFill>
       </Sequence>
 
-      {/* Scene 3: Garage — 360–600 */}
-      <Sequence from={360} durationInFrames={245}>
+      {/* Scene 3 — Garage */}
+      <Sequence from={362} durationInFrames={242}>
         <Scene3Garage />
       </Sequence>
 
-      {/* Wipe 3→4 */}
-      <Sequence from={596} durationInFrames={20}>
-        <SliceWipe triggerFrame={0} />
+      <Sequence from={598} durationInFrames={10}>
+        <AbsoluteFill><FlashCut frame={frame} at={0} /></AbsoluteFill>
       </Sequence>
 
-      {/* Scene 4: News — 600–780 */}
-      <Sequence from={600} durationInFrames={185}>
+      {/* Scene 4 — News */}
+      <Sequence from={600} durationInFrames={184}>
         <Scene4News />
       </Sequence>
 
-      {/* Wipe 4→5 */}
-      <Sequence from={776} durationInFrames={20}>
-        <SliceWipe triggerFrame={0} />
+      <Sequence from={778} durationInFrames={10}>
+        <AbsoluteFill><FlashCut frame={frame} at={0} /></AbsoluteFill>
       </Sequence>
 
-      {/* Scene 5: End Card — 780–900 */}
+      {/* Scene 5 — End Card */}
       <Sequence from={780} durationInFrames={120}>
-        <Scene5EndCard />
+        <Scene5End />
       </Sequence>
     </AbsoluteFill>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 16:9 VARIANT — Same scenes, letterboxed
-// ═══════════════════════════════════════════════════════════════════════════
+// 16:9 pillarbox variant
 export function F1CoreDemo16x9Comp() {
   return (
-    <AbsoluteFill
-      style={{
-        background: C.black,
-        // Scale the 9:16 content to fit 16:9 with pillarboxing
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <div
-        style={{
-          // 9:16 content scaled to fit 1080px height inside 1920×1080
-          width: 607, // 1080 * (9/16) = 607.5
-          height: 1080,
-          transform: "scale(1)",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ width: 1080, height: 1920, transform: "scale(0.5625)", transformOrigin: "top left" }}>
+    <AbsoluteFill style={{ background:C.black, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      {/* Side panels */}
+      {[{left:0,width:657},{right:0,width:657}].map((s,i)=>(
+        <div key={i} style={{
+          position:"absolute", top:0, bottom:0,
+          background:C.black,
+          backgroundImage:`repeating-linear-gradient(-45deg, transparent, transparent 18px, rgba(225,6,0,0.02) 18px, rgba(225,6,0,0.02) 19px)`,
+          ...s,
+        }} />
+      ))}
+      <div style={{ width:607, height:1080, position:"relative", overflow:"hidden" }}>
+        <div style={{ width:1080, height:1920, transform:"scale(0.5625)", transformOrigin:"top left" }}>
           <F1CoreDemoComp />
         </div>
       </div>
-
-      {/* Side panels — dark with brand pattern */}
-      {[
-        { left: 0, width: 656 },
-        { right: 0, width: 656 },
-      ].map((style, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            background: C.black,
-            backgroundImage: `repeating-linear-gradient(
-              -45deg,
-              transparent,
-              transparent 20px,
-              rgba(225,6,0,0.025) 20px,
-              rgba(225,6,0,0.025) 21px
-            )`,
-            ...style,
-          }}
-        />
-      ))}
     </AbsoluteFill>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// REMOTION ROOT — register both compositions
-// ═══════════════════════════════════════════════════════════════════════════
 export default function Root() {
   return (
     <>
-      <Composition
-        id="F1CoreDemo"
-        component={F1CoreDemoComp}
-        durationInFrames={900}
-        fps={60}
-        width={1080}
-        height={1920}
-        defaultProps={{}}
-      />
-      <Composition
-        id="F1CoreDemo16x9"
-        component={F1CoreDemo16x9Comp}
-        durationInFrames={900}
-        fps={60}
-        width={1920}
-        height={1080}
-        defaultProps={{}}
-      />
+      <Composition id="F1CoreDemo" component={F1CoreDemoComp} durationInFrames={900} fps={60} width={1080} height={1920} defaultProps={{}} />
+      <Composition id="F1CoreDemo16x9" component={F1CoreDemo16x9Comp} durationInFrames={900} fps={60} width={1920} height={1080} defaultProps={{}} />
     </>
   );
 }
