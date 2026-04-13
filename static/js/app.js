@@ -1433,6 +1433,9 @@ class Tutorial {
             this._spotlight.style.display = 'none';
             this._arrow.style.display = 'none';
             this._overlay.classList.remove('has-spotlight');
+            this._card.style.top = '';
+            this._card.style.left = '';
+            this._card.style.transform = '';
             this._card.className = 'tutorial-card welcome';
 
             const featureHTML = (step.features || []).map(f =>
@@ -1455,6 +1458,9 @@ class Tutorial {
             this._spotlight.style.display = 'none';
             this._arrow.style.display = 'none';
             this._overlay.classList.remove('has-spotlight');
+            this._card.style.top = '';
+            this._card.style.left = '';
+            this._card.style.transform = '';
             this._card.className = 'tutorial-card welcome';
 
             const profile = window.userProfile;
