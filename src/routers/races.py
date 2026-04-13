@@ -25,7 +25,7 @@ async def get_seasons():
 
     except Exception as e:
         logging.error(f"Error fetching seasons: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/races/{year}")
@@ -56,7 +56,7 @@ async def get_races(year: int):
 
     except Exception as e:
         logging.error(f"Error fetching races: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/sessions/{year}/{round}")
@@ -84,4 +84,4 @@ async def get_sessions(year: int, round: int):
         raise
     except Exception as e:
         logging.error(f"Error fetching sessions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -34,20 +34,22 @@ function parseSectorTime(str) {
     return 0;
 }
 
-// Debug helper function - set to false to disable
-const DEBUG_ENABLED = true;
+// Debug only on localhost — never in production
+const DEBUG_ENABLED = window.location.hostname === 'localhost' ||
+                      window.location.hostname === '127.0.0.1';
 
-// Debug helper function
+// Debug helper — uses DOM APIs, never innerHTML
 function debug(message, data) {
     if (!DEBUG_ENABLED) return;
-    
+
     console.log(`[F1-Dash] ${message}`, data);
     const debugElement = document.getElementById('debug-info');
     if (debugElement) {
         debugElement.style.display = 'block';
-        debugElement.innerHTML += `<div>${message}: ${JSON.stringify(data, null, 2)}</div>\n`;
-        
-        // Scroll to bottom
+        const entry = document.createElement('div');
+        // textContent is XSS-safe — no HTML interpretation
+        entry.textContent = `${message}: ${JSON.stringify(data, null, 2)}`;
+        debugElement.appendChild(entry);
         debugElement.scrollTop = debugElement.scrollHeight;
     }
 }

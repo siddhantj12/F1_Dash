@@ -1,3 +1,4 @@
+import re
 import fastf1
 import pandas as pd
 from src.cache import cache
@@ -8,6 +9,44 @@ from supabase_setup import supabase
 
 # Preserve built-in round — FastAPI path params named 'round' shadow it
 _round = round
+
+# ── Input validation helpers ──────────────────────────────────────────────────
+_VALID_SESSIONS = {
+    "Race", "Qualifying", "Sprint", "Sprint Qualifying",
+    "Practice 1", "Practice 2", "Practice 3",
+}
+_DRIVER_CODE_RE = re.compile(r'^[A-Z]{2,4}$')
+_MIN_YEAR, _MAX_YEAR = 2018, 2030
+
+
+def _validate_session(session: str) -> str:
+    if session not in _VALID_SESSIONS:
+        raise HTTPException(status_code=400, detail="Invalid session name")
+    return session
+
+
+def _validate_driver(driver: str) -> str:
+    if not _DRIVER_CODE_RE.match(driver.upper()):
+        raise HTTPException(status_code=400, detail="Invalid driver code")
+    return driver.upper()
+
+
+def _validate_year(year: int) -> int:
+    if not (_MIN_YEAR <= year <= _MAX_YEAR):
+        raise HTTPException(status_code=400, detail="Year out of range")
+    return year
+
+
+def _validate_round(round_num: int) -> int:
+    if not (1 <= round_num <= 25):
+        raise HTTPException(status_code=400, detail="Round out of range")
+    return round_num
+
+
+def _validate_lap(lap: int) -> int:
+    if not (1 <= lap <= 100):
+        raise HTTPException(status_code=400, detail="Lap out of range")
+    return lap
 
 # ---------------------------------------------------------------------------
 # In-process session cache — avoids re-loading the same FastF1 session
@@ -39,6 +78,10 @@ router = APIRouter()
 @router.get("/laps/{year}/{round}/{session}/{driver}")
 async def get_laps(year: int, round: int, session: str, driver: str):
     """Get all laps for a specific driver in a session"""
+    year = _validate_year(year)
+    round = _validate_round(round)
+    session = _validate_session(session)
+    driver = _validate_driver(driver)
     try:
         # Try Supabase RPC first
         try:
@@ -83,11 +126,16 @@ async def get_laps(year: int, round: int, session: str, driver: str):
         raise
     except Exception as e:
         logger.error(f"Error fetching laps: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/telemetry/{year}/{round}/{session}/{driver}/{lap}")
 async def get_telemetry(year: int, round: int, session: str, driver: str, lap: int):
+    year = _validate_year(year)
+    round = _validate_round(round)
+    session = _validate_session(session)
+    driver = _validate_driver(driver)
+    lap = _validate_lap(lap)
     cache_key = f"{year}_{round}_{session}_{driver}_{lap}"
 
     # Check cache first
@@ -159,7 +207,7 @@ async def get_telemetry(year: int, round: int, session: str, driver: str, lap: i
         raise
     except Exception as e:
         logger.error(f"Error fetching telemetry: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 def _extract_telemetry_rows(telemetry_df: pd.DataFrame) -> list:
@@ -293,6 +341,13 @@ async def compare_telemetry(
     driver2: str, lap2: int,
 ):
     """Compare telemetry between two drivers — loads session ONCE, cached in memory."""
+    year = _validate_year(year)
+    round = _validate_round(round)
+    session = _validate_session(session)
+    driver1 = _validate_driver(driver1)
+    driver2 = _validate_driver(driver2)
+    lap1 = _validate_lap(lap1)
+    lap2 = _validate_lap(lap2)
     try:
         from src.routers.drivers import safe_get_team_color
 
@@ -476,12 +531,16 @@ async def compare_telemetry(
         raise
     except Exception as e:
         logger.error(f"Error comparing telemetry: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/standings/{year}/{round}/{session}/{lap}")
 async def get_lap_standings(year: int, round: int, session: str, lap: int):
     """Get driver standings at a specific lap — uses latest completed lap per driver."""
+    year = _validate_year(year)
+    round = _validate_round(round)
+    session = _validate_session(session)
+    lap = _validate_lap(lap)
     try:
         sk = _session_key(year, round, session)
         session_data = _get_cached_session(sk)
@@ -553,12 +612,14 @@ async def get_lap_standings(year: int, round: int, session: str, lap: int):
 
     except Exception as e:
         logger.error(f"Error getting lap standings: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/track/{year}/{round}")
 async def get_track_data(year: int, round: int):
     """Get track layout data for visualization"""
+    year = _validate_year(year)
+    round = _validate_round(round)
     try:
         # Try Supabase RPC first
         result = supabase.rpc(
@@ -599,4 +660,4 @@ async def get_track_data(year: int, round: int):
 
     except Exception as e:
         logger.error(f"Error fetching track data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

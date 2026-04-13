@@ -162,12 +162,27 @@ def _time_ago(iso_str: str) -> str:
 
 
 def _strip_html(text: str) -> str:
+    """Strip all HTML tags safely using the stdlib html.parser — no regex."""
     if not text:
         return ""
-    import re
-    clean = re.sub(r'<[^>]+>', '', text)
-    clean = clean.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&#8217;', "'").replace('&#8216;', "'").replace('&#8220;', '"').replace('&#8221;', '"').replace('&nbsp;', ' ')
-    clean = re.sub(r'\s+', ' ', clean).strip()
+    from html.parser import HTMLParser
+    import html as html_module
+
+    class _Stripper(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self._parts: list[str] = []
+
+        def handle_data(self, data: str):
+            self._parts.append(data)
+
+        def get_text(self) -> str:
+            return " ".join(self._parts)
+
+    stripper = _Stripper()
+    # Unescape HTML entities first, then strip tags
+    stripper.feed(html_module.unescape(text))
+    clean = " ".join(stripper.get_text().split()).strip()
     return clean[:300]
 
 

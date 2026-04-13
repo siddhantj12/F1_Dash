@@ -55,4 +55,4 @@ async def get_tire_compounds(year: int, race: str, session: str, driver: str):
 
     except Exception as e:
         logger.error(f"Error fetching tire compounds: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
