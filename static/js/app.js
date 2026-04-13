@@ -1432,6 +1432,7 @@ class Tutorial {
         if (step.type === 'welcome') {
             this._spotlight.style.display = 'none';
             this._arrow.style.display = 'none';
+            this._overlay.classList.remove('has-spotlight');
             this._card.className = 'tutorial-card welcome';
 
             const featureHTML = (step.features || []).map(f =>
@@ -1453,6 +1454,7 @@ class Tutorial {
         } else if (step.type === 'setup') {
             this._spotlight.style.display = 'none';
             this._arrow.style.display = 'none';
+            this._overlay.classList.remove('has-spotlight');
             this._card.className = 'tutorial-card welcome';
 
             const profile = window.userProfile;
@@ -1541,6 +1543,7 @@ class Tutorial {
         } else {
             this._spotlight.style.display = '';
             this._arrow.style.display = '';
+            this._overlay.classList.add('has-spotlight');
             this._card.className = 'tutorial-card';
 
             const stepNum = idx;
