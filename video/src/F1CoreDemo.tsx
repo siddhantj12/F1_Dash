@@ -9,7 +9,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { CSSMotionBlur } from "@remotion/motion-blur";
+import { Trail } from "@remotion/motion-blur";
 
 // ─── Brand tokens ───────────────────────────────────────────────────────────
 const C = {
@@ -158,7 +158,7 @@ function Scene1ColdOpen() {
 
       <div style={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 0 }}>
         {/* Logo block */}
-        <CSSMotionBlur numSlices={5} lagInFrames={0.4}>
+        <Trail layers={4} lagInFrames={0.5} trailOpacity={0.15}>
           <div
             style={{
               transform: `scale(${logoScale})`,
@@ -218,7 +218,7 @@ function Scene1ColdOpen() {
               CORE
             </div>
           </div>
-        </CSSMotionBlur>
+        </Trail>
 
         {/* Red sweep line */}
         <div style={{ width: 320, marginTop: 16, marginBottom: 16 }}>
@@ -675,29 +675,25 @@ function Scene2cSpeedChart() {
             ))}
 
             {/* Leclerc line */}
-            <CSSMotionBlur numSlices={3} lagInFrames={0.2}>
-              <path
-                d={buildPath(leclercData, drawProgress)}
-                fill="none"
-                stroke={C.ferrari}
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={0.7}
-              />
-            </CSSMotionBlur>
+            <path
+              d={buildPath(leclercData, drawProgress)}
+              fill="none"
+              stroke={C.ferrari}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.7}
+            />
 
             {/* Norris line */}
-            <CSSMotionBlur numSlices={3} lagInFrames={0.2}>
-              <path
-                d={buildPath(norrisData, drawProgress)}
-                fill="none"
-                stroke={C.mclaren}
-                strokeWidth={3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </CSSMotionBlur>
+            <path
+              d={buildPath(norrisData, drawProgress)}
+              fill="none"
+              stroke={C.mclaren}
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
 
             {/* Glow under Norris line */}
             <path
